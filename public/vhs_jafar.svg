@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="tableGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#404547"/>
+      <stop offset="50%" stop-color="#2d3133"/>
+      <stop offset="100%" stop-color="#1f2224"/>
+    </linearGradient>
+    <linearGradient id="vhsBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#262628"/>
+      <stop offset="100%" stop-color="#141416"/>
+    </linearGradient>
+    <linearGradient id="coverArt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1236"/>
+      <stop offset="40%" stop-color="#73194a"/>
+      <stop offset="80%" stop-color="#e65c00"/>
+      <stop offset="100%" stop-color="#ffcc00"/>
+    </linearGradient>
+    <linearGradient id="stickerGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d32f2f"/>
+      <stop offset="60%" stop-color="#e65100"/>
+      <stop offset="100%" stop-color="#ffb300"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#tableGrad)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.15" />
+
+  <!-- VHS Clamshell Case behind -->
+  <g transform="translate(180, 110)">
+    <rect x="0" y="0" width="440" height="380" rx="14" fill="#e8eaed" opacity="0.3" stroke="#ffffff" stroke-width="3"/>
+    <!-- Case Artwork -->
+    <rect x="12" y="12" width="416" height="356" rx="8" fill="url(#coverArt)" stroke="#ffffff" stroke-width="1.5"/>
+    <rect x="25" y="25" width="390" height="60" rx="4" fill="#000000" opacity="0.5"/>
+    <text x="220" y="52" fill="#ffffff" font-family="'Cinzel', Georgia, serif" font-size="20" font-weight="bold" text-anchor="middle" letter-spacing="2">WALT DISNEY</text>
+    <text x="220" y="74" fill="#ffd700" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="3">LE RETOUR DE JAFAR</text>
+
+    <!-- Character silhouettes / shapes preview -->
+    <circle cx="340" cy="240" r="60" fill="#ffb74d" opacity="0.8"/>
+    <path d="M 280,290 Q 330,170 380,290 Z" fill="#9c27b0" opacity="0.85"/>
+    <text x="220" y="340" fill="#ffffff" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="1">VIDÉO PREMIÈRE • 1994</text>
+  </g>
+
+  <!-- VHS Cassette Tape in front -->
+  <g transform="translate(230, 80)">
+    <!-- Cassette Body Drop Shadow -->
+    <rect x="-10" y="-10" width="360" height="440" rx="8" fill="#000000" opacity="0.5" filter="blur(6px)" />
+
+    <!-- Cassette Main Body -->
+    <rect x="0" y="0" width="340" height="420" rx="6" fill="url(#vhsBody)" stroke="#444448" stroke-width="2"/>
+
+    <!-- Left grip ribs -->
+    <g fill="#101012">
+      <rect x="8" y="30" width="8" height="360" rx="2"/>
+      <rect x="20" y="30" width="4" height="360" rx="1"/>
+    </g>
+
+    <!-- Right grip ribs -->
+    <g fill="#101012">
+      <rect x="324" y="30" width="8" height="360" rx="2"/>
+      <rect x="316" y="30" width="4" height="360" rx="1"/>
+    </g>
+
+    <!-- Cassette Window Indentation -->
+    <rect x="42" y="45" width="256" height="330" rx="8" fill="#0d0d0f" stroke="#333336" stroke-width="1.5"/>
+
+    <!-- Top Spool Window -->
+    <rect x="70" y="60" width="200" height="70" rx="6" fill="#22252a" opacity="0.9" stroke="#555" stroke-width="1"/>
+    <!-- Top White Reel -->
+    <circle cx="170" cy="95" r="28" fill="#e0e0e0" stroke="#999" stroke-width="2"/>
+    <circle cx="170" cy="95" r="14" fill="#262628"/>
+    <!-- Teeth -->
+    <rect x="167" y="78" width="6" height="34" fill="#bbb"/>
+    <rect x="153" y="92" width="34" height="6" fill="#bbb"/>
+
+    <!-- Center Label Sticker -->
+    <rect x="60" y="145" width="220" height="130" rx="5" fill="url(#stickerGrad)" stroke="#222" stroke-width="1.5"/>
+    <rect x="68" y="153" width="204" height="114" rx="3" fill="none" stroke="#ffe082" stroke-width="1" stroke-dasharray="3 3"/>
+    
+    <!-- Sticker Content -->
+    <text x="170" y="178" fill="#ffffff" font-family="'Cinzel', Georgia, serif" font-size="13" font-weight="bold" text-anchor="middle" letter-spacing="1">WALT DISNEY</text>
+    <text x="170" y="196" fill="#ffffff" font-family="sans-serif" font-size="9" font-weight="bold" text-anchor="middle" letter-spacing="1.5">VIDÉO PREMIÈRE</text>
+    
+    <rect x="85" y="205" width="170" height="24" rx="3" fill="#1b1008" opacity="0.85"/>
+    <text x="170" y="222" fill="#ffeb3b" font-family="'Cinzel', Georgia, serif" font-size="13" font-weight="bold" text-anchor="middle">LE RETOUR DE JAFAR</text>
+    
+    <text x="170" y="248" fill="#ffffff" font-family="sans-serif" font-size="8" text-anchor="middle">Édition Collector VHS PAL • VF</text>
+    <text x="170" y="260" fill="#ffffff" font-family="sans-serif" font-size="7" opacity="0.85" text-anchor="middle">Durée env. 66 min • 1994 The Walt Disney Company</text>
+
+    <!-- Bottom Spool Window -->
+    <rect x="70" y="290" width="200" height="70" rx="6" fill="#22252a" opacity="0.9" stroke="#555" stroke-width="1"/>
+    <!-- Bottom White Reel with Tape Spooled -->
+    <circle cx="170" cy="325" r="32" fill="#111" stroke="#333" stroke-width="2"/>
+    <circle cx="170" cy="325" r="24" fill="#e0e0e0" stroke="#999" stroke-width="2"/>
+    <circle cx="170" cy="325" r="12" fill="#262628"/>
+    <!-- Teeth -->
+    <rect x="167" y="310" width="6" height="30" fill="#bbb"/>
+    <rect x="155" y="322" width="30" height="6" fill="#bbb"/>
+
+    <!-- Bottom flap / hinge indication -->
+    <rect x="42" y="390" width="256" height="18" rx="2" fill="#18181a" stroke="#333" stroke-width="1"/>
+    <text x="170" y="402" fill="#777" font-family="monospace" font-size="8" text-anchor="middle">VHS • SECAM / PAL • STEREO</text>
+  </g>
+</svg>
