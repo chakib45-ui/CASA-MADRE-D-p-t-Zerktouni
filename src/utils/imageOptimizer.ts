@@ -130,3 +130,83 @@ export async function optimizeImageFile(
   });
 }
 
+/**
+ * Asynchronously extract all files from a DataTransfer object,
+ * including multi-file drops and directory hierarchies (using webkitGetAsEntry if available).
+ */
+export async function extractFilesFromDataTransfer(dataTransfer: DataTransfer | null): Promise<File[]> {
+  if (!dataTransfer) return [];
+  const files: File[] = [];
+
+  // Helper to read entries recursively from a directory
+  const readDirectoryEntries = async (dirEntry: any): Promise<any[]> => {
+    const reader = dirEntry.createReader();
+    const entries: any[] = [];
+    let readBatch: any[] = [];
+    do {
+      readBatch = await new Promise<any[]>((resolve) => {
+        reader.readEntries(
+          (results: any[]) => resolve(Array.from(results)),
+          () => resolve([])
+        );
+      });
+      entries.push(...readBatch);
+    } while (readBatch.length > 0);
+    return entries;
+  };
+
+  const traverseEntry = async (entry: any): Promise<void> => {
+    if (!entry) return;
+    if (entry.isFile) {
+      await new Promise<void>((resolve) => {
+        entry.file(
+          (file: File) => {
+            if (file) files.push(file);
+            resolve();
+          },
+          () => resolve()
+        );
+      });
+    } else if (entry.isDirectory) {
+      try {
+        const childEntries = await readDirectoryEntries(entry);
+        for (const child of childEntries) {
+          await traverseEntry(child);
+        }
+      } catch {
+        // Continue if directory traversal encounters an issue
+      }
+    }
+  };
+
+  // 1. Try modern DataTransferItemList with webkitGetAsEntry for recursive directories & multi-files
+  if (dataTransfer.items && dataTransfer.items.length > 0) {
+    const entryPromises: Promise<void>[] = [];
+    for (let i = 0; i < dataTransfer.items.length; i++) {
+      const item = dataTransfer.items[i];
+      if (item.kind === 'file') {
+        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+        if (entry) {
+          entryPromises.push(traverseEntry(entry));
+        } else {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+    }
+    if (entryPromises.length > 0) {
+      await Promise.all(entryPromises);
+    }
+  }
+
+  // 2. Fallback to standard dataTransfer.files if items yielded nothing
+  if (files.length === 0 && dataTransfer.files && dataTransfer.files.length > 0) {
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      const file = dataTransfer.files.item(i);
+      if (file) files.push(file);
+    }
+  }
+
+  return files;
+}
+

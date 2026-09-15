@@ -14,10 +14,11 @@ import { BatchUploadModal } from './components/BatchUploadModal';
 import { HeaderSettingsModal } from './components/HeaderSettingsModal';
 import { PrintModal } from './components/PrintModal';
 import { ImageViewerModal } from './components/ImageViewerModal';
+import { CameraCaptureModal } from './components/CameraCaptureModal';
 import { exportCatalogToPDF, printCatalogViaBrowser } from './utils/pdfExport';
 import { exportCatalogToExcel } from './utils/excelExport';
 import { getStoredItem, setStoredItem, migrateFromLocalStorage } from './utils/storage';
-import { isImageFile } from './utils/imageOptimizer';
+import { isImageFile, extractFilesFromDataTransfer } from './utils/imageOptimizer';
 
 export default function App() {
   const [articles, setArticles] = useState<ArticleItem[]>(INITIAL_ARTICLES);
@@ -35,11 +36,15 @@ export default function App() {
   // Modals state
   const [isBatchUploadOpen, setIsBatchUploadOpen] = useState(false);
   const [initialFilesForBatch, setInitialFilesForBatch] = useState<File[]>([]);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isHeaderSettingsOpen, setIsHeaderSettingsOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<ArticleItem | null>(null);
   const [viewingImageArticle, setViewingImageArticle] = useState<ArticleItem | null>(null);
   const [isDragOverWindow, setIsDragOverWindow] = useState(false);
+
+  // Global search bar state (Header)
+  const [globalSearch, setGlobalSearch] = useState<string>('');
 
   // PDF generation state
   const [isExporting, setIsExporting] = useState(false);
@@ -122,8 +127,8 @@ export default function App() {
             ...savedConfig,
             mainTitle: savedConfig.mainTitle || 'CASA MADRE',
             subtitle: 'Dépôt Zerktouni',
-            collection: savedConfig.activeFolder || savedConfig.collection || 'Halloween',
-            activeFolder: savedConfig.activeFolder || 'Halloween',
+            collection: savedConfig.collection || '',
+            activeFolder: savedConfig.activeFolder || 'Antiquités',
             folders: savedFolders,
             contactInfo: (savedConfig.contactInfo && savedConfig.contactInfo !== 'Zerktouni' && savedConfig.contactInfo !== 'Dépôt Zerktouni — Casablanca') ? savedConfig.contactInfo : '',
             showReference: false,
@@ -134,8 +139,8 @@ export default function App() {
           setConfig({
             ...DEFAULT_CONFIG,
             subtitle: 'Dépôt Zerktouni',
-            collection: 'Halloween',
-            activeFolder: 'Halloween',
+            collection: '',
+            activeFolder: 'Antiquités',
             folders: ['Antiquités', 'Halloween'],
             contactInfo: '',
             showReference: false,
@@ -180,10 +185,19 @@ export default function App() {
     : ['Antiquités', 'Halloween'];
   const activeFolder = config.activeFolder || 'Halloween';
 
-  // Articles displayed according to active folder
-  const displayedArticles = activeFolder === 'all'
-    ? articles
-    : articles.filter(a => (a.folder || 'Antiquités').toLowerCase() === activeFolder.toLowerCase());
+  // Articles displayed according to global search (across all folders) or active folder
+  const isGlobalSearchActive = globalSearch.trim().length > 0;
+  const searchNormalized = globalSearch.trim().toLowerCase();
+
+  const displayedArticles = isGlobalSearchActive
+    ? articles.filter(a => {
+        const nameMatch = a.name ? a.name.toLowerCase().includes(searchNormalized) : false;
+        const refMatch = a.ref ? a.ref.toLowerCase().includes(searchNormalized) : false;
+        return nameMatch || refMatch;
+      })
+    : (activeFolder === 'all'
+        ? articles
+        : articles.filter(a => (a.folder || 'Antiquités').toLowerCase() === activeFolder.toLowerCase()));
 
   // Folder management handlers
   const handleSelectFolder = (newFolder: string) => {
@@ -243,39 +257,98 @@ export default function App() {
     showToast(`Dossier « ${folderToDelete} » supprimé. Articles transférés vers « Antiquités »`);
   };
 
-  // Global window drag & drop handling
+  // Reinforced global window & document drag & drop handling
+  // Strictly prevents files from opening in the browser tab and supports multi-file async extraction
   useEffect(() => {
+    const handleDragPrevent = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
     const handleWindowDragOver = (e: DragEvent) => {
       e.preventDefault();
-      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
-        setIsDragOverWindow(true);
-      }
-    };
-    const handleWindowDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      if (e.clientX === 0 || e.clientY === 0 || e.relatedTarget === null) {
-        setIsDragOverWindow(false);
-      }
-    };
-    const handleWindowDrop = (e: DragEvent) => {
-      e.preventDefault();
-      setIsDragOverWindow(false);
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const imageFiles = Array.from(e.dataTransfer.files).filter(isImageFile);
-        if (imageFiles.length > 0) {
-          setInitialFilesForBatch(imageFiles);
-          setIsBatchUploadOpen(true);
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+        const types = Array.from(e.dataTransfer.types || []);
+        if (types.includes('Files')) {
+          setIsDragOverWindow(true);
         }
       }
     };
 
-    window.addEventListener('dragover', handleWindowDragOver);
-    window.addEventListener('dragleave', handleWindowDragLeave);
-    window.addEventListener('drop', handleWindowDrop);
+    const handleWindowDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      if (
+        e.clientX <= 0 || 
+        e.clientY <= 0 || 
+        e.clientX >= window.innerWidth || 
+        e.clientY >= window.innerHeight || 
+        e.relatedTarget === null
+      ) {
+        setIsDragOverWindow(false);
+      }
+    };
+
+    const handleWindowDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOverWindow(false);
+
+      try {
+        const extracted = await extractFilesFromDataTransfer(e.dataTransfer);
+        const imageFiles = extracted.filter(isImageFile);
+
+        if (imageFiles.length > 0) {
+          setInitialFilesForBatch(imageFiles);
+          setIsBatchUploadOpen(true);
+          showToast(`${imageFiles.length} photo(s) détectée(s) — Prêtes pour l'import`);
+        } else if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const fallbackImages = Array.from(e.dataTransfer.files).filter(isImageFile);
+          if (fallbackImages.length > 0) {
+            setInitialFilesForBatch(fallbackImages);
+            setIsBatchUploadOpen(true);
+            showToast(`${fallbackImages.length} photo(s) détectée(s) — Prêtes pour l'import`);
+          }
+        }
+      } catch (err) {
+        console.error('Erreur extraction fichiers drop:', err);
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const fallbackImages = Array.from(e.dataTransfer.files).filter(isImageFile);
+          if (fallbackImages.length > 0) {
+            setInitialFilesForBatch(fallbackImages);
+            setIsBatchUploadOpen(true);
+          }
+        }
+      }
+    };
+
+    // Attach to window and document with capture: true to intercept and cancel browser default navigation
+    window.addEventListener('dragenter', handleDragPrevent, { capture: true, passive: false });
+    document.addEventListener('dragenter', handleDragPrevent, { capture: true, passive: false });
+
+    window.addEventListener('dragover', handleWindowDragOver, { capture: true, passive: false });
+    document.addEventListener('dragover', handleWindowDragOver, { capture: true, passive: false });
+
+    window.addEventListener('dragleave', handleWindowDragLeave, { capture: true, passive: false });
+    document.addEventListener('dragleave', handleWindowDragLeave, { capture: true, passive: false });
+
+    window.addEventListener('drop', handleWindowDrop, { capture: true, passive: false });
+    document.addEventListener('drop', handleWindowDrop, { capture: true, passive: false });
+
     return () => {
-      window.removeEventListener('dragover', handleWindowDragOver);
-      window.removeEventListener('dragleave', handleWindowDragLeave);
-      window.removeEventListener('drop', handleWindowDrop);
+      window.removeEventListener('dragenter', handleDragPrevent, { capture: true });
+      document.removeEventListener('dragenter', handleDragPrevent, { capture: true });
+
+      window.removeEventListener('dragover', handleWindowDragOver, { capture: true });
+      document.removeEventListener('dragover', handleWindowDragOver, { capture: true });
+
+      window.removeEventListener('dragleave', handleWindowDragLeave, { capture: true });
+      document.removeEventListener('dragleave', handleWindowDragLeave, { capture: true });
+
+      window.removeEventListener('drop', handleWindowDrop, { capture: true });
+      document.removeEventListener('drop', handleWindowDrop, { capture: true });
     };
   }, []);
 
@@ -326,6 +399,12 @@ export default function App() {
     setArticles([...articles, ...newArticles]);
     const targetFolder = newArticles[0]?.folder || activeFolder;
     showToast(`${newArticles.length} article(s) enregistré(s) dans le dossier « ${targetFolder} »`);
+  };
+
+  // Add single scanned / captured article
+  const handleAddSingleArticle = (newArticle: ArticleItem) => {
+    setArticles(prev => [newArticle, ...prev]);
+    showToast(`Photo capturée et ajoutée au dossier « ${newArticle.folder} »`);
   };
 
   // Add new blank manual article
@@ -454,11 +533,15 @@ export default function App() {
       {/* Top Header */}
       <Header
         config={config}
+        searchQuery={globalSearch}
+        onSearchChange={setGlobalSearch}
+        searchResultCount={isGlobalSearchActive ? displayedArticles.length : undefined}
         onDownloadPDF={handleRequestDownloadPDF}
         onDownloadExcel={handleRequestDownloadExcel}
         onPrint={() => setIsPrintModalOpen(true)}
         onOpenHeaderSettings={() => setIsHeaderSettingsOpen(true)}
         onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
+        onOpenScanner={() => setIsScannerOpen(true)}
         isExporting={isExporting}
         exportStatus={exportStatus}
       />
@@ -468,6 +551,8 @@ export default function App() {
         folders={folders}
         activeFolder={activeFolder}
         articles={articles}
+        globalSearch={globalSearch}
+        onClearGlobalSearch={() => setGlobalSearch('')}
         onChangeFolder={handleSelectFolder}
         onOpenNewFolder={() => setIsFolderCreateOpen(true)}
         onOpenEditFolder={() => setIsFolderEditOpen(true)}
@@ -487,6 +572,8 @@ export default function App() {
         <InventorySidebar
           articles={articles}
           activeFolder={activeFolder}
+          globalSearch={globalSearch}
+          onClearGlobalSearch={() => setGlobalSearch('')}
           onSelectArticle={setEditingArticle}
           onViewImage={setViewingImageArticle}
           onMoveArticle={handleMoveArticle}
@@ -501,6 +588,8 @@ export default function App() {
         <CatalogPreview
           articles={displayedArticles}
           config={config}
+          globalSearch={globalSearch}
+          onClearGlobalSearch={() => setGlobalSearch('')}
           onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
           onAddNewManual={handleAddNewManual}
           onSelectArticle={(article) => setEditingArticle(article)}
@@ -588,6 +677,13 @@ export default function App() {
         initialFiles={initialFilesForBatch}
         targetFolder={activeFolder === 'all' ? 'Halloween' : activeFolder}
         availableFolders={folders}
+      />
+
+      <CameraCaptureModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        activeFolder={activeFolder}
+        onAddArticle={handleAddSingleArticle}
       />
 
       {/* Global Window Drag & Drop Overlay */}

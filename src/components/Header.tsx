@@ -4,6 +4,9 @@ import {
   Printer, 
   Sliders, 
   Upload, 
+  Camera,
+  Search,
+  X,
   Sparkles,
   BookOpen,
   HelpCircle,
@@ -16,22 +19,30 @@ import { DEFAULT_CONFIG } from '../data/defaultCatalog';
 
 interface HeaderProps {
   config?: CatalogConfig;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  searchResultCount?: number;
   onDownloadPDF: () => void;
   onDownloadExcel: () => void;
   onPrint: () => void;
   onOpenHeaderSettings: () => void;
   onOpenBatchUpload: () => void;
+  onOpenScanner?: () => void;
   isExporting: boolean;
   exportStatus: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   config = DEFAULT_CONFIG,
+  searchQuery = '',
+  onSearchChange,
+  searchResultCount,
   onDownloadPDF,
   onDownloadExcel,
   onPrint,
   onOpenHeaderSettings,
   onOpenBatchUpload,
+  onOpenScanner,
   isExporting,
   exportStatus,
 }) => {
@@ -51,12 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#41362f] text-[#d6c5b2] tracking-wider border border-[#52443a]">
               {safeConfig.subtitle || 'Dépôt Zerktouni'}
             </span>
-            {safeConfig.collection && (
-              <span className="text-[10px] uppercase font-sans font-semibold px-2 py-0.5 rounded bg-[#8c6239]/40 text-[#f5ebd9] border border-[#8c6239] tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#e89a43] inline-block" />
-                Thème : {safeConfig.collection}
-              </span>
-            )}
           </div>
           <p className="font-garamond italic text-xs text-[#c4b5a5] mt-0.5">
             Inventaire interactif & Catalogue A4 professionnel haute définition
@@ -64,8 +69,49 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+      {/* Barre de recherche globale (sur l'ensemble des dossiers) */}
+      {onSearchChange && (
+        <div className="flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm lg:max-w-md my-1 order-3 lg:order-2">
+          <div className="relative flex items-center">
+            <Search className="w-3.5 h-3.5 absolute left-3 text-[#c4b5a5] pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') onSearchChange('');
+              }}
+              placeholder="Rechercher par nom ou référence (tous dossiers)..."
+              className="w-full pl-9 pr-16 py-1.5 bg-[#1e1713] text-[#f7f5f0] placeholder-[#8e7e70] text-xs rounded-md border border-[#52443a] focus:outline-none focus:border-[#c4a482] focus:ring-1 focus:ring-[#8c6239] transition-all shadow-inner"
+              title="Rechercher des articles par nom ou par référence sur l'ensemble des dossiers"
+            />
+            {/* Counter badge & clear button */}
+            <div className="absolute right-2 flex items-center gap-1.5">
+              {searchQuery.trim() !== '' && searchResultCount !== undefined && (
+                <span 
+                  className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[#8c6239]/40 text-[#f5ebd9] border border-[#8c6239]/60 select-none"
+                  title={`${searchResultCount} article(s) trouvé(s) sur tous les dossiers`}
+                >
+                  {searchResultCount}
+                </span>
+              )}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange('')}
+                  className="text-stone-400 hover:text-white p-0.5 rounded hover:bg-white/10 transition-colors"
+                  title="Effacer la recherche globale"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Primary Actions */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 order-2 lg:order-3">
         {/* En-tête customize */}
         <button
           type="button"
@@ -82,10 +128,24 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onOpenBatchUpload}
           className="px-3 py-1.5 text-xs font-medium text-[#f0e8dd] bg-[#4a3a2d] hover:bg-[#5c4938] rounded border border-[#6b5542] flex items-center gap-1.5 transition-colors"
+          title="Importer des photos depuis l'ordinateur (fichiers multiples ou glisser-déposer)"
         >
           <Upload className="w-3.5 h-3.5 text-[#d9b896]" />
           <span>Importer photos</span>
         </button>
+
+        {/* Scanner / Live Camera */}
+        {onOpenScanner && (
+          <button
+            type="button"
+            onClick={onOpenScanner}
+            className="px-3 py-1.5 text-xs font-semibold text-[#fef6ea] bg-gradient-to-r from-[#8c6239] to-[#a37344] hover:from-[#9c6e40] hover:to-[#b3804d] rounded border border-[#c4a482]/60 flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+            title="Scanner / Photographier en direct avec la caméra pour le dossier actif"
+          >
+            <Camera className="w-3.5 h-3.5 text-[#ffdca8]" />
+            <span>Scanner</span>
+          </button>
+        )}
 
         {/* Print / System PDF */}
         <button

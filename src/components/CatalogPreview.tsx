@@ -8,7 +8,9 @@ import {
   Printer, 
   FileText,
   Upload,
-  Plus
+  Plus,
+  Search,
+  X
 } from 'lucide-react';
 import { ArticleItem, CatalogConfig } from '../types';
 import { COLOR_THEMES } from '../data/defaultCatalog';
@@ -17,6 +19,8 @@ import { A4Page } from './A4Page';
 interface CatalogPreviewProps {
   articles: ArticleItem[];
   config: CatalogConfig;
+  globalSearch?: string;
+  onClearGlobalSearch?: () => void;
   onOpenBatchUpload: () => void;
   onAddNewManual: () => void;
   onSelectArticle?: (article: ArticleItem) => void;
@@ -27,6 +31,8 @@ interface CatalogPreviewProps {
 export const CatalogPreview: React.FC<CatalogPreviewProps> = ({
   articles,
   config,
+  globalSearch = '',
+  onClearGlobalSearch,
   onOpenBatchUpload,
   onAddNewManual,
   onSelectArticle,
@@ -197,39 +203,88 @@ export const CatalogPreview: React.FC<CatalogPreviewProps> = ({
           </button>
         </div>
 
+        {/* Global search status notification */}
+        {globalSearch && globalSearch.trim().length > 0 && (
+          <div className="w-full max-w-2xl bg-amber-50 border border-amber-200/90 rounded-md px-3.5 py-2 mb-4 flex items-center justify-between text-xs text-[#5c3e21] shadow-2xs no-print">
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-[#8c6239] flex-shrink-0" />
+              <span>
+                Recherche globale (tous dossiers) pour <strong>« {globalSearch} »</strong> : <strong className="text-[#8c6239]">{articles.length} article{articles.length > 1 ? 's' : ''}</strong>
+              </span>
+            </div>
+            {onClearGlobalSearch && (
+              <button
+                type="button"
+                onClick={onClearGlobalSearch}
+                className="px-2 py-0.5 bg-white hover:bg-stone-50 border border-amber-300 rounded text-[11px] font-semibold text-[#8c6239] hover:text-[#5c3e21] transition-colors flex items-center gap-1 cursor-pointer"
+                title="Effacer la recherche globale et revenir au dossier sélectionné"
+              >
+                <X className="w-3 h-3" />
+                <span>Effacer</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {articles.length === 0 ? (
           <div className="my-auto max-w-md bg-white p-8 rounded-lg shadow-md border border-[#e2d9ce] text-center">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-[#faf7f2] flex items-center justify-center text-[#8c6239]">
-              <FileText className="w-7 h-7" />
-            </div>
-            <h3 className="font-cinzel text-base font-bold text-[#5c3e21] mb-1">
-              {config.activeFolder && config.activeFolder !== 'all'
-                ? `Le dossier « ${config.activeFolder} » est vide`
-                : 'Votre catalogue est vide'}
-            </h3>
-            <p className="text-xs text-[#6e6259] mb-4">
-              {config.activeFolder && config.activeFolder !== 'all'
-                ? `Toutes les photos importées seront directement enregistrées dans le dossier « ${config.activeFolder} ».`
-                : 'Commencez par ajouter des photos de vos articles ou créez une fiche manuellement.'}
-            </p>
-            <div className="flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={onOpenBatchUpload}
-                className="px-3 py-2 bg-[#8c6239] text-white text-xs font-semibold rounded shadow-xs hover:bg-[#734f2d] flex items-center gap-1.5"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Importer dans « {config.activeFolder === 'all' ? 'Halloween' : config.activeFolder || 'Halloween'} »</span>
-              </button>
-              <button
-                type="button"
-                onClick={onAddNewManual}
-                className="px-3 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded hover:bg-stone-200 flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Créer une fiche</span>
-              </button>
-            </div>
+            {globalSearch && globalSearch.trim().length > 0 ? (
+              <>
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-50 flex items-center justify-center text-[#8c6239] border border-amber-200">
+                  <Search className="w-7 h-7" />
+                </div>
+                <h3 className="font-cinzel text-base font-bold text-[#5c3e21] mb-1">
+                  Aucun résultat trouvé
+                </h3>
+                <p className="text-xs text-[#6e6259] mb-4">
+                  Aucun article ne correspond à « {globalSearch} » par nom ou par référence sur l'ensemble des dossiers.
+                </p>
+                {onClearGlobalSearch && (
+                  <button
+                    type="button"
+                    onClick={onClearGlobalSearch}
+                    className="px-4 py-2 bg-[#8c6239] text-white text-xs font-semibold rounded shadow-xs hover:bg-[#734f2d] inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Effacer la recherche</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-[#faf7f2] flex items-center justify-center text-[#8c6239]">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <h3 className="font-cinzel text-base font-bold text-[#5c3e21] mb-1">
+                  {config.activeFolder && config.activeFolder !== 'all'
+                    ? `Le dossier « ${config.activeFolder} » est vide`
+                    : 'Votre catalogue est vide'}
+                </h3>
+                <p className="text-xs text-[#6e6259] mb-4">
+                  {config.activeFolder && config.activeFolder !== 'all'
+                    ? `Toutes les photos importées seront directement enregistrées dans le dossier « ${config.activeFolder} ».`
+                    : 'Commencez par ajouter des photos de vos articles ou créez une fiche manuellement.'}
+                </p>
+                <div className="flex justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onOpenBatchUpload}
+                    className="px-3 py-2 bg-[#8c6239] text-white text-xs font-semibold rounded shadow-xs hover:bg-[#734f2d] flex items-center gap-1.5"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Importer dans « {config.activeFolder === 'all' ? 'Halloween' : config.activeFolder || 'Halloween'} »</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onAddNewManual}
+                    className="px-3 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded hover:bg-stone-200 flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Créer une fiche</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div

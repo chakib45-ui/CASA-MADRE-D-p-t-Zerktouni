@@ -1,7 +1,9 @@
 {
   "name": "CASA MADRE - Dépôt Zerktouni",
   "description": "Générateur de fiches d'inventaire et catalogues PDF pour CASA MADRE - Dépôt Zerktouni. Gestion par dossiers thématiques, photos haute définition, descriptions et quantités.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

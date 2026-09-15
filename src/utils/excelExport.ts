@@ -14,30 +14,48 @@ export function exportCatalogToExcel(
   const rows = [
     {
       'N°': '',
-      'Aperçu / Photo': 'ÉTABLISSEMENT',
+      'Référence': 'ÉTABLISSEMENT',
       'Nom de l\'article': `${safeConfig.mainTitle || 'CASA MADRE'} — ${safeConfig.subtitle || 'Dépôt Zerktouni'}`,
       'Dossier': folderTitle,
       'Quantité': `Date: ${safeConfig.dateStr || new Date().toLocaleDateString('fr-FR')}`,
-      'Catégorie': `Thème: ${safeConfig.collection || 'Halloween'}`,
-      'Remarques': '',
+      'Catégorie': 'Inventaire Stock Dépôt',
+      'Dimensions': '',
+      'État / Condition': '',
+      'Époque & Style': '',
+      'Matériaux': '',
+      'Prix': '',
+      'Photo HD': '',
+      'Notes & Remarques': '',
     },
     {
       'N°': '',
-      'Aperçu / Photo': '',
+      'Référence': '',
       'Nom de l\'article': '',
       'Dossier': '',
       'Quantité': '',
       'Catégorie': '',
-      'Remarques': '',
+      'Dimensions': '',
+      'État / Condition': '',
+      'Époque & Style': '',
+      'Matériaux': '',
+      'Prix': '',
+      'Photo HD': '',
+      'Notes & Remarques': '',
     },
     ...articles.map((art, idx) => ({
       'N°': idx + 1,
-      'Aperçu / Photo': art.imageUrl ? 'Photo HD incluse' : 'Aucune photo',
+      'Référence': art.ref || `CM-${String(idx + 1).padStart(4, '0')}`,
       'Nom de l\'article': art.name,
       'Dossier': art.folder || 'Antiquités',
       'Quantité': art.quantity || '1',
       'Catégorie': art.category || 'Antiquités',
-      'Remarques': [art.periodOrStyle, art.material, art.notes].filter(Boolean).join(' • '),
+      'Dimensions': art.dimensions || '',
+      'État / Condition': art.condition || '',
+      'Époque & Style': art.periodOrStyle || '',
+      'Matériaux': art.material || '',
+      'Prix': art.price || '',
+      'Photo HD': art.imageUrl ? 'Oui' : 'Non',
+      'Notes & Remarques': art.notes || '',
     })),
   ];
 
@@ -46,12 +64,18 @@ export function exportCatalogToExcel(
   // Column formatting
   worksheet['!cols'] = [
     { wch: 6 },   // N°
-    { wch: 20 },  // Aperçu / Photo
+    { wch: 14 },  // Référence
     { wch: 45 },  // Nom de l'article
-    { wch: 22 },  // Dossier
-    { wch: 14 },  // Quantité
-    { wch: 26 },  // Catégorie
-    { wch: 35 },  // Remarques
+    { wch: 18 },  // Dossier
+    { wch: 12 },  // Quantité
+    { wch: 24 },  // Catégorie
+    { wch: 25 },  // Dimensions
+    { wch: 30 },  // État / Condition
+    { wch: 30 },  // Époque & Style
+    { wch: 30 },  // Matériaux
+    { wch: 14 },  // Prix
+    { wch: 10 },  // Photo HD
+    { wch: 45 },  // Notes & Remarques
   ];
 
   const workbook = XLSX.utils.book_new();

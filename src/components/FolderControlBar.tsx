@@ -7,7 +7,9 @@ import {
   Sparkles, 
   ArrowRight,
   CheckCircle2,
-  FolderTree
+  FolderTree,
+  Search,
+  X
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 
@@ -15,6 +17,8 @@ interface FolderControlBarProps {
   folders: string[];
   activeFolder: string;
   articles: ArticleItem[];
+  globalSearch?: string;
+  onClearGlobalSearch?: () => void;
   onChangeFolder: (folder: string) => void;
   onOpenNewFolder: () => void;
   onOpenEditFolder: () => void;
@@ -24,6 +28,8 @@ export const FolderControlBar: React.FC<FolderControlBarProps> = ({
   folders,
   activeFolder,
   articles,
+  globalSearch = '',
+  onClearGlobalSearch,
   onChangeFolder,
   onOpenNewFolder,
   onOpenEditFolder,
@@ -103,6 +109,24 @@ export const FolderControlBar: React.FC<FolderControlBarProps> = ({
           <Edit3 className="w-3.5 h-3.5 text-[#c4a482]" />
           <span>Modifier dossier</span>
         </button>
+
+        {/* Global search status badge if active */}
+        {globalSearch && globalSearch.trim().length > 0 && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#8c6239]/40 border border-[#c4a482]/60 text-[#fbf4ea] text-[11px] shadow-2xs">
+            <Search className="w-3 h-3 text-amber-300 flex-shrink-0" />
+            <span>Recherche globale : « <strong>{globalSearch}</strong> »</span>
+            {onClearGlobalSearch && (
+              <button
+                type="button"
+                onClick={onClearGlobalSearch}
+                className="ml-1 p-0.5 text-[#d9c4b0] hover:text-white hover:bg-white/10 rounded cursor-pointer transition-colors"
+                title="Désactiver le filtre de recherche globale"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right side: Destination des imports notice */}

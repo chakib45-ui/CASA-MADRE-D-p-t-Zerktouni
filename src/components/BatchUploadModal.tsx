@@ -13,7 +13,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { ArticleItem } from '../types';
-import { optimizeImageFile, isImageFile } from '../utils/imageOptimizer';
+import { optimizeImageFile, isImageFile, extractFilesFromDataTransfer } from '../utils/imageOptimizer';
 
 export interface BatchItem {
   id: string;
@@ -192,13 +192,25 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(Array.from(e.dataTransfer.files));
+    try {
+      const extractedFiles = await extractFilesFromDataTransfer(e.dataTransfer);
+      if (extractedFiles.length > 0) {
+        processFiles(extractedFiles);
+      } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFiles(Array.from(e.dataTransfer.files));
+      }
+    } catch {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFiles(Array.from(e.dataTransfer.files));
+      }
     }
   };
 

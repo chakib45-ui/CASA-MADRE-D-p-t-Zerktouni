@@ -19,6 +19,8 @@ import { downloadImageFile } from '../utils/imageOptimizer';
 interface InventorySidebarProps {
   articles: ArticleItem[];
   activeFolder?: string;
+  globalSearch?: string;
+  onClearGlobalSearch?: () => void;
   onSelectArticle: (article: ArticleItem) => void;
   onViewImage?: (article: ArticleItem) => void;
   onMoveArticle: (index: number, direction: 'up' | 'down') => void;
@@ -32,6 +34,8 @@ interface InventorySidebarProps {
 export const InventorySidebar: React.FC<InventorySidebarProps> = ({
   articles,
   activeFolder = 'Halloween',
+  globalSearch = '',
+  onClearGlobalSearch,
   onSelectArticle,
   onViewImage,
   onMoveArticle,
@@ -43,12 +47,20 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Articles filtered by active folder (if activeFolder is not 'all')
-  const folderArticles = activeFolder === 'all'
-    ? articles
-    : articles.filter(a => (a.folder || 'Antiquités').toLowerCase() === activeFolder.toLowerCase());
+  const isGlobalSearchActive = globalSearch.trim().length > 0;
+  const globalQuery = globalSearch.trim().toLowerCase();
 
-  const filteredArticles = folderArticles.filter(a =>
+  // Articles filtered by globalSearch (across all folders) or by activeFolder
+  const baseArticles = isGlobalSearchActive
+    ? articles.filter(a =>
+        (a.name && a.name.toLowerCase().includes(globalQuery)) ||
+        (a.ref && a.ref.toLowerCase().includes(globalQuery))
+      )
+    : (activeFolder === 'all'
+        ? articles
+        : articles.filter(a => (a.folder || 'Antiquités').toLowerCase() === activeFolder.toLowerCase()));
+
+  const filteredArticles = baseArticles.filter(a =>
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (a.ref && a.ref.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (a.periodOrStyle && a.periodOrStyle.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -63,9 +75,13 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
           <div className="flex items-center gap-2">
             <PackageCheck className="w-4 h-4 text-[#8c6239]" />
             <h2 className="font-cinzel text-sm font-bold text-[#5c3e21]">
-              {activeFolder === 'all' ? 'Tous les articles' : `Dossier : ${activeFolder}`}
+              {isGlobalSearchActive 
+                ? 'Recherche globale' 
+                : activeFolder === 'all' 
+                ? 'Tous les articles' 
+                : `Dossier : ${activeFolder}`}
               <span className="ml-1.5 font-sans font-medium text-xs text-stone-500">
-                ({folderArticles.length})
+                ({baseArticles.length})
               </span>
             </h2>
           </div>
@@ -79,6 +95,26 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
             Modèles
           </button>
         </div>
+
+        {/* Global search active alert banner */}
+        {isGlobalSearchActive && (
+          <div className="mb-3 px-2.5 py-1.5 bg-amber-50/90 border border-amber-200/80 rounded text-[11px] text-[#5c3e21] flex items-center justify-between gap-1 shadow-2xs">
+            <div className="flex items-center gap-1.5 truncate">
+              <Search className="w-3 h-3 text-[#8c6239] flex-shrink-0" />
+              <span className="truncate">Tous dossiers : <strong>« {globalSearch} »</strong></span>
+            </div>
+            {onClearGlobalSearch && (
+              <button
+                type="button"
+                onClick={onClearGlobalSearch}
+                className="text-[10px] text-[#8c6239] hover:text-[#5c3e21] underline font-semibold flex-shrink-0 cursor-pointer"
+                title="Effacer la recherche globale et revenir au dossier actif"
+              >
+                Effacer
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2">
@@ -117,7 +153,11 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredArticles.length === 0 ? (
           <div className="text-center py-10 px-4 text-stone-400 text-xs">
-            {searchTerm ? 'Aucun article correspondant à la recherche' : 'Aucun article dans l\'inventaire'}
+            {searchTerm 
+              ? 'Aucun article correspondant au filtre de liste' 
+              : isGlobalSearchActive 
+              ? `Aucun article trouvé pour « ${globalSearch} » dans tous les dossiers`
+              : 'Aucun article dans ce dossier'}
           </div>
         ) : (
           filteredArticles.map((article, index) => {
@@ -178,7 +218,7 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
                   </p>
 
                   <div className="flex items-center gap-2 mt-0.5 text-[9.5px] text-stone-400">
-                    {activeFolder === 'all' && (
+                    {(activeFolder === 'all' || isGlobalSearchActive) && (
                       <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-medium">
                         📁 {article.folder || 'Antiquités'}
                       </span>
