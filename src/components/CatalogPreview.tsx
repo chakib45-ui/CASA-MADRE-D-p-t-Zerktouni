@@ -5,7 +5,6 @@ import {
   Maximize2, 
   ChevronLeft, 
   ChevronRight, 
-  Printer, 
   FileText,
   Upload,
   Plus,
@@ -134,20 +133,8 @@ export const CatalogPreview: React.FC<CatalogPreviewProps> = ({
           )}
         </div>
 
-        {/* Zoom & Quick Print controls */}
+        {/* Zoom controls */}
         <div className="flex items-center gap-2">
-          {onOpenPrintModal && (
-            <button
-              type="button"
-              onClick={onOpenPrintModal}
-              className="px-2.5 py-1 rounded bg-[#8c6239] hover:bg-[#75502c] text-white font-medium flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-              title="Imprimer le catalogue en format A4"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span className="font-semibold">Imprimer A4</span>
-            </button>
-          )}
-
           <div className="flex items-center gap-1">
             <button
               type="button"

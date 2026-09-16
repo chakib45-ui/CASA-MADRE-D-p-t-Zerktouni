@@ -3,7 +3,6 @@ import {
   Download, 
   Printer, 
   Sliders, 
-  Upload, 
   Camera,
   Search,
   X,
@@ -28,7 +27,7 @@ interface HeaderProps {
   onDownloadExcel: () => void;
   onPrint: () => void;
   onOpenHeaderSettings: () => void;
-  onOpenBatchUpload: () => void;
+  onOpenBatchUpload?: () => void;
   onOpenScanner?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
@@ -127,17 +126,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Sliders className="w-3.5 h-3.5 text-[#c4a482]" />
           <span className="hidden md:inline">En-tête & Infos</span>
-        </button>
-
-        {/* Upload photos */}
-        <button
-          type="button"
-          onClick={onOpenBatchUpload}
-          className="px-3 py-1.5 text-xs font-medium text-[#f0e8dd] bg-[#4a3a2d] hover:bg-[#5c4938] rounded border border-[#6b5542] flex items-center gap-1.5 transition-colors"
-          title="Importer des photos depuis l'ordinateur (fichiers multiples ou glisser-déposer)"
-        >
-          <Upload className="w-3.5 h-3.5 text-[#d9b896]" />
-          <span>Importer photos</span>
         </button>
 
         {/* Scanner / Live Camera */}
