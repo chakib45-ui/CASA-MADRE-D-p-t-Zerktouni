@@ -281,29 +281,29 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs no-print">
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] border border-[#e2d9ce]"
+        className="bg-white dark:bg-[#1e1712] rounded-lg shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] border border-[#e2d9ce] dark:border-[#3d2f24] transition-colors"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#e2d9ce] flex justify-between items-center bg-[#faf7f2]">
+        <div className="px-6 py-4 border-b border-[#e2d9ce] dark:border-[#382b21] flex justify-between items-center bg-[#faf7f2] dark:bg-[#261d17]">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-cinzel text-lg font-bold text-[#5c3e21]">
+              <h2 className="font-cinzel text-lg font-bold text-[#5c3e21] dark:text-[#f3dfcc]">
                 Importer un lot de photos d'articles
               </h2>
-              <span className="px-2 py-0.5 rounded bg-[#f0e8dd] text-[#8c6239] text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1 border border-[#e2d9ce]">
+              <span className="px-2 py-0.5 rounded bg-[#f0e8dd] dark:bg-[#382a20] text-[#8c6239] dark:text-[#d4a373] text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1 border border-[#e2d9ce] dark:border-[#4d3b2d]">
                 <Sparkles className="w-3 h-3" />
                 Vision IA
               </span>
             </div>
-            <p className="text-xs text-[#6e6259] mt-0.5 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#476355]" />
+            <p className="text-xs text-[#6e6259] dark:text-[#a8988a] mt-0.5 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#476355] dark:text-[#6a997f]" />
               <span>Consigne stricte respectée : photo originale intacte (aucun filtre, aucun recadrage).</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-1 rounded-md transition-colors"
+            className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1 rounded-md transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -334,8 +334,8 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {/* Error notice if upload failed */}
           {uploadError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-md text-red-800 dark:text-red-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
               <span>{uploadError}</span>
             </div>
           )}
@@ -345,7 +345,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-[#c4a482] rounded-lg p-6 text-center bg-[#fdfcf9] hover:bg-[#faf6f0] cursor-pointer transition-colors group relative"
+            className="border-2 border-dashed border-[#c4a482] dark:border-[#7c634c] rounded-lg p-6 text-center bg-[#fdfcf9] dark:bg-[#251c16] hover:bg-[#faf6f0] dark:hover:bg-[#2e231b] cursor-pointer transition-colors group relative"
           >
             <input
               ref={fileInputRef}
@@ -355,12 +355,12 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
               onChange={handleFileChange}
               className="hidden"
             />
-            <div className="flex flex-col items-center justify-center gap-2 text-[#5c3e21]">
-              <div className="w-12 h-12 rounded-full bg-[#f0e8dd] flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="flex flex-col items-center justify-center gap-2 text-[#5c3e21] dark:text-[#dfd4c7]">
+              <div className="w-12 h-12 rounded-full bg-[#f0e8dd] dark:bg-[#382a20] flex items-center justify-center group-hover:scale-105 transition-transform">
                 {isCompressing ? (
                   <Loader2 className="w-6 h-6 text-[#8c6239] animate-spin" />
                 ) : (
-                  <Upload className="w-6 h-6 text-[#8c6239]" />
+                  <Upload className="w-6 h-6 text-[#8c6239] dark:text-[#d4a373]" />
                 )}
               </div>
               <p className="font-semibold text-sm">
@@ -369,29 +369,29 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                   : 'Glissez-déposez vos photos ici ou cliquez pour parcourir vos fichiers'}
               </p>
               <div className="mt-1">
-                <span className="inline-block px-3 py-1 bg-[#8c6239] text-white text-xs font-semibold rounded shadow-xs group-hover:bg-[#734f2d]">
+                <span className="inline-block px-3 py-1 bg-[#8c6239] hover:bg-[#734f2d] text-white text-xs font-semibold rounded shadow-xs">
                   Sélectionner des photos sur mon appareil
                 </span>
               </div>
-              <p className="text-xs text-[#6e6259] mt-1">
+              <p className="text-xs text-[#6e6259] dark:text-[#a8988a] mt-1">
                 Formats acceptés : JPG, PNG, WEBP, HEIC (iPhone), AVIF. Vos photos originales restent intactes sans déformation.
               </p>
             </div>
           </div>
 
           {/* Batch Quick Adjustments (Quantity & Category) */}
-          <div className="p-3 bg-[#fbf9f6] border border-[#e8dfd5] rounded-md flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-3 bg-[#fbf9f6] dark:bg-[#241c16] border border-[#e8dfd5] dark:border-[#3d2f24] rounded-md flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-stone-700">Quantité par défaut :</span>
+              <span className="font-semibold text-stone-700 dark:text-[#dfd4c7]">Quantité par défaut :</span>
               {['1', '2', '4', '51', '111'].map(q => (
                 <button
                   key={q}
                   type="button"
                   onClick={() => applyQuantityToAll(q)}
-                  className={`px-2 py-1 rounded border text-[11px] font-medium transition-all ${
+                  className={`px-2 py-1 rounded border text-[11px] font-medium transition-all cursor-pointer ${
                     defaultQuantity === q
                       ? 'bg-[#8c6239] text-white border-[#8c6239]'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                      : 'bg-white dark:bg-[#2d221b] text-stone-700 dark:text-[#dfd4c7] border-stone-200 dark:border-[#4a392c] hover:bg-stone-50 dark:hover:bg-[#382a20]'
                   }`}
                   title={`Appliquer la quantité ${q} à tous les articles`}
                 >
@@ -400,7 +400,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
               ))}
             </div>
 
-            <div className="text-[11px] text-[#6e6259]">
+            <div className="text-[11px] text-[#6e6259] dark:text-[#a8988a]">
               💡 Vous pouvez aussi ajuster la quantité individuellement sur chaque article ci-dessous.
             </div>
           </div>
@@ -409,10 +409,10 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
           {selectedItems.length > 0 && (
             <div className="space-y-2 pt-1">
               <div className="flex justify-between items-center">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-[#dfd4c7] flex items-center gap-1.5">
                   <span>{selectedItems.length} article(s) à intégrer</span>
                   {selectedItems.some(it => it.aiStatus === 'analyzing') && (
-                    <span className="text-[11px] font-normal text-[#8c6239] flex items-center gap-1">
+                    <span className="text-[11px] font-normal text-[#8c6239] dark:text-[#d4a373] flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Analyse Vision IA en cours...
                     </span>
@@ -421,7 +421,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedItems([])}
-                  className="text-[11px] text-red-600 hover:underline"
+                  className="text-[11px] text-red-600 dark:text-red-400 hover:underline cursor-pointer"
                 >
                   Tout effacer
                 </button>
@@ -431,10 +431,10 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                 {selectedItems.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-stone-50 border border-stone-200 rounded-md text-xs hover:border-[#c4a482] transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-stone-50 dark:bg-[#271e17] border border-stone-200 dark:border-[#3d2f24] rounded-md text-xs hover:border-[#c4a482] dark:hover:border-[#8c6239] transition-colors"
                   >
                     {/* Intact Original Image Thumbnail (object-contain, uncropped, no filter) */}
-                    <div className="w-16 h-16 rounded border border-stone-300 bg-stone-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                    <div className="w-16 h-16 rounded border border-stone-300 dark:border-[#4d3b2d] bg-stone-100 dark:bg-[#1a1410] flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                       <img
                         src={item.preview}
                         alt={item.name}
@@ -446,20 +446,20 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         {item.aiStatus === 'analyzing' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8c6239] bg-[#f5ede2] px-1.5 py-0.5 rounded border border-[#e8dfd5]">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8c6239] dark:text-[#d4a373] bg-[#f5ede2] dark:bg-[#382a20] px-1.5 py-0.5 rounded border border-[#e8dfd5] dark:border-[#4d3b2d]">
                             <Loader2 className="w-2.5 h-2.5 animate-spin" />
                             Détection IA...
                           </span>
                         )}
                         {item.aiStatus === 'done' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                             Nom détecté par IA
                           </span>
                         )}
                         {item.aiStatus === 'error' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                            <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/60">
+                            <AlertCircle className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                             Nom automatique
                           </span>
                         )}
@@ -474,12 +474,12 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                         value={item.name}
                         onChange={e => updateItem(item.id, { name: e.target.value })}
                         placeholder="Nom simple et direct de l'article"
-                        className="w-full font-semibold px-2.5 py-1 bg-white border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] text-stone-800"
+                        className="w-full font-semibold px-2.5 py-1 bg-white dark:bg-[#1f1813] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] text-stone-800 dark:text-[#faf6f0]"
                       />
 
                       {/* Extra info (category, style if detected) */}
                       {(item.category || item.periodOrStyle) && (
-                        <div className="text-[10px] text-stone-500 flex items-center gap-2 truncate">
+                        <div className="text-[10px] text-stone-500 dark:text-stone-400 flex items-center gap-2 truncate">
                           {item.category && <span>{item.category}</span>}
                           {item.periodOrStyle && <span>• {item.periodOrStyle}</span>}
                         </div>
@@ -487,16 +487,16 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                     </div>
 
                     {/* Right: Manual Quantity Control */}
-                    <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
+                    <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200 dark:border-[#3d2f24]">
                       <div className="flex flex-col items-start sm:items-end">
-                        <label className="text-[10px] font-semibold uppercase text-stone-500 mb-0.5">
+                        <label className="text-[10px] font-semibold uppercase text-stone-500 dark:text-stone-400 mb-0.5">
                           Quantité :
                         </label>
-                        <div className="flex items-center rounded border border-stone-300 bg-white overflow-hidden shadow-2xs">
+                        <div className="flex items-center rounded border border-stone-300 dark:border-[#4d3b2d] bg-white dark:bg-[#1f1813] overflow-hidden shadow-2xs">
                           <button
                             type="button"
                             onClick={() => handleAdjustQuantity(item.id, -1)}
-                            className="p-1 hover:bg-stone-100 text-stone-600 border-r border-stone-200"
+                            className="p-1 hover:bg-stone-100 dark:hover:bg-[#2d221b] text-stone-600 dark:text-stone-300 border-r border-stone-200 dark:border-[#4d3b2d] cursor-pointer"
                             title="Diminuer la quantité"
                           >
                             <Minus className="w-3 h-3" />
@@ -505,12 +505,12 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                             type="text"
                             value={item.quantity}
                             onChange={e => updateItem(item.id, { quantity: e.target.value })}
-                            className="w-14 text-center font-bold text-xs py-0.5 focus:outline-none text-[#5c3e21]"
+                            className="w-14 text-center font-bold text-xs py-0.5 focus:outline-none text-[#5c3e21] dark:text-[#faf6f0] bg-transparent"
                           />
                           <button
                             type="button"
                             onClick={() => handleAdjustQuantity(item.id, 1)}
-                            className="p-1 hover:bg-stone-100 text-stone-600 border-l border-stone-200"
+                            className="p-1 hover:bg-stone-100 dark:hover:bg-[#2d221b] text-stone-600 dark:text-stone-300 border-l border-stone-200 dark:border-[#4d3b2d] cursor-pointer"
                             title="Augmenter la quantité"
                           >
                             <Plus className="w-3 h-3" />
@@ -525,7 +525,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                           updateItem(item.id, { aiStatus: 'analyzing' });
                           analyzeItemWithVisionAI(item);
                         }}
-                        className="p-1.5 text-stone-400 hover:text-[#8c6239] rounded border border-transparent hover:border-stone-200 transition-colors"
+                        className="p-1.5 text-stone-400 hover:text-[#8c6239] dark:hover:text-[#d4a373] rounded border border-transparent hover:border-stone-200 dark:hover:border-[#4d3b2d] transition-colors cursor-pointer"
                         title="Ré-analyser par Vision IA"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${item.aiStatus === 'analyzing' ? 'animate-spin text-[#8c6239]' : ''}`} />
@@ -535,7 +535,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        className="p-1.5 text-stone-400 hover:text-red-600 rounded transition-colors"
+                        className="p-1.5 text-stone-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors cursor-pointer"
                         title="Retirer cette photo"
                       >
                         <X className="w-4 h-4" />
@@ -549,8 +549,8 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3 border-t border-[#e2d9ce] bg-[#faf7f2] flex justify-between items-center">
-          <span className="text-xs text-[#6e6259]">
+        <div className="px-6 py-3 border-t border-[#e2d9ce] dark:border-[#382b21] bg-[#faf7f2] dark:bg-[#261d17] flex justify-between items-center">
+          <span className="text-xs text-[#6e6259] dark:text-[#a8988a]">
             {selectedItems.length === 0
               ? 'Sélectionnez au moins une photo pour commencer'
               : `${selectedItems.length} article(s) prêt(s) à être ajouté(s) au catalogue CASA MADRE`}
@@ -559,7 +559,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 rounded border border-stone-200 transition-colors"
+              className="px-4 py-1.5 text-xs font-medium text-stone-600 dark:text-[#dfd4c7] hover:bg-stone-100 dark:hover:bg-[#2e231b] rounded border border-stone-200 dark:border-[#4d3b2d] transition-colors cursor-pointer"
             >
               Annuler
             </button>
@@ -567,7 +567,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
               type="button"
               disabled={selectedItems.length === 0 || isProcessing}
               onClick={handleSubmit}
-              className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8c6239] hover:bg-[#734f2d] disabled:opacity-50 disabled:cursor-not-allowed rounded shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8c6239] hover:bg-[#734f2d] disabled:opacity-50 disabled:cursor-not-allowed rounded shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Intégrer au catalogue CASA MADRE

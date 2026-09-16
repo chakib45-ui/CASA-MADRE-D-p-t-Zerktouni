@@ -1,11 +1,35 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Typography standards & high readability */
 .font-cinzel {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
 }
 
 .font-garamond {
   font-family: 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: 0.015em;
+  line-height: 1.35;
+}
+
+.article-text-body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  font-feature-settings: "liga" 0, "calt" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Ensure no text overlap in article cards */
+.article-desc-container * {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
 }
 
 /* A4 dimensions simulation in preview (210mm x 297mm ratio = 1 : 1.414) */

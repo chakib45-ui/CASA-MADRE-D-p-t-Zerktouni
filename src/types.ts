@@ -50,4 +50,5 @@ export interface CatalogConfig {
   headerEveryPage: boolean;
   notesFooter: string;
   cleanScanEffect?: boolean;
+  uiDarkMode?: boolean;
 }

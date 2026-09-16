@@ -152,22 +152,23 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs no-print">
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e2d9ce]"
+        className="bg-white dark:bg-[#1e1712] rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e2d9ce] dark:border-[#3d2f24] transition-colors"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-3.5 border-b border-[#e2d9ce] flex justify-between items-center bg-[#faf7f2]">
+        <div className="px-6 py-3.5 border-b border-[#e2d9ce] dark:border-[#382b21] flex justify-between items-center bg-[#faf7f2] dark:bg-[#261d17]">
           <div>
-            <h2 className="font-cinzel text-base font-bold text-[#5c3e21]">
+            <h2 className="font-cinzel text-base font-bold text-[#5c3e21] dark:text-[#f3dfcc]">
               Modifier la fiche article
             </h2>
-            <p className="text-[11px] text-[#6e6259]">
+            <p className="text-[11px] text-[#6e6259] dark:text-[#a8988a]">
               Réf : {formData.ref || 'Non définie'} — Style Antiquités / Brocante
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-1 rounded-md transition-colors"
+            className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1 rounded-md transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -176,11 +177,11 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
           {/* Photo preview + change */}
-          <div className="flex gap-4 items-start p-3 bg-stone-50 border border-stone-200 rounded">
-            <div className="w-28 h-28 rounded border border-stone-300 overflow-hidden bg-stone-200 flex-shrink-0 relative group">
+          <div className="flex gap-4 items-start p-3 bg-stone-50 dark:bg-[#251d17] border border-stone-200 dark:border-[#3d2f24] rounded">
+            <div className="w-28 h-28 rounded border border-stone-300 dark:border-[#4d3a2e] overflow-hidden bg-stone-200 dark:bg-[#2e231c] flex-shrink-0 relative group">
               {isProcessingImage ? (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-stone-100 text-stone-600 gap-1 text-[10px]">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#8c6239]" />
+                <div className="w-full h-full flex flex-col items-center justify-center bg-stone-100 dark:bg-[#261e18] text-stone-600 dark:text-stone-300 gap-1 text-[10px]">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#8c6239] dark:text-[#d4a373]" />
                   <span>Optimisation...</span>
                 </div>
               ) : formData.imageUrl ? (
@@ -206,7 +207,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
             </div>
             <div className="flex-1 space-y-2">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                   Photo de l'article :
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -215,23 +216,23 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                     type="file"
                     accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.jfif,.avif,.bmp"
                     onChange={handleImageFileChange}
-                    className="text-xs text-stone-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#f0e8dd] file:text-[#5c3e21] hover:file:bg-[#e6dbce] cursor-pointer"
+                    className="text-xs text-stone-500 dark:text-stone-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#f0e8dd] dark:file:bg-[#3d2e22] file:text-[#5c3e21] dark:file:text-[#f0dfcc] hover:file:bg-[#e6dbce] cursor-pointer"
                   />
                   {formData.imageUrl && (
                     <button
                       type="button"
                       onClick={() => downloadImageFile(formData.imageUrl, `${formData.name || 'article'}.jpg`)}
-                      className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 rounded text-xs flex items-center gap-1.5 transition-colors"
+                      className="px-2.5 py-1 bg-stone-100 dark:bg-[#2d221b] hover:bg-stone-200 dark:hover:bg-[#382b22] border border-stone-300 dark:border-[#4d3b2d] text-stone-700 dark:text-[#e0d3c5] rounded text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       title="Enregistrer / Télécharger la photo sur votre ordinateur"
                     >
-                      <Download className="w-3.5 h-3.5 text-[#8c6239]" />
+                      <Download className="w-3.5 h-3.5 text-[#8c6239] dark:text-[#d4a373]" />
                       <span>Télécharger photo</span>
                     </button>
                   )}
                 </div>
               </div>
               <div>
-                <label className="block font-semibold text-stone-600 mb-0.5">
+                <label className="block font-semibold text-stone-600 dark:text-stone-300 mb-0.5">
                   Ou URL d'image web :
                 </label>
                 <input
@@ -239,29 +240,29 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                   value={formData.imageUrl}
                   onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
                   placeholder="https://..."
-                  className="w-full px-2.5 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-[#8c6239]"
+                  className="w-full px-2.5 py-1 text-xs bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:border-[#8c6239] dark:focus:border-[#c4a482]"
                 />
               </div>
             </div>
           </div>
 
           {/* Bouton Analyser avec IA */}
-          <div className="p-3 bg-gradient-to-r from-[#faf6f0] via-[#f7f0e6] to-[#f4ebe0] border border-[#d9c4b0] rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="p-3 bg-gradient-to-r from-[#faf6f0] via-[#f7f0e6] to-[#f4ebe0] dark:from-[#2e2219] dark:via-[#2a1f17] dark:to-[#261c14] border border-[#d9c4b0] dark:border-[#523d2e] rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-start gap-2.5">
               <div className="w-8 h-8 rounded bg-[#8c6239] text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
                 <Sparkles className="w-4 h-4 text-[#fdebd4]" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-cinzel text-xs font-bold text-[#5c3e21]">
+                  <span className="font-cinzel text-xs font-bold text-[#5c3e21] dark:text-[#f0dfcc]">
                     Expertise Visuelle Gemini
                   </span>
-                  <span className="text-[9.5px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#8c6239]/15 text-[#6e4624] font-semibold border border-[#d9c4b0]">
+                  <span className="text-[9.5px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#8c6239]/15 dark:bg-[#8c6239]/30 text-[#6e4624] dark:text-[#e8cbb0] font-semibold border border-[#d9c4b0] dark:border-[#634937]">
                     Auto-complétion
                   </span>
                 </div>
-                <p className="text-[11px] text-[#735e4d] leading-snug mt-0.5">
-                  Analyse la photo pour identifier automatiquement : <span className="font-semibold text-[#5c3e21]">matière</span>, <span className="font-semibold text-[#5c3e21]">époque</span>, <span className="font-semibold text-[#5c3e21]">dimensions</span> et <span className="font-semibold text-[#5c3e21]">description</span>.
+                <p className="text-[11px] text-[#735e4d] dark:text-[#bda897] leading-snug mt-0.5">
+                  Analyse la photo pour identifier automatiquement : <span className="font-semibold text-[#5c3e21] dark:text-[#f0dfcc]">matière</span>, <span className="font-semibold text-[#5c3e21] dark:text-[#f0dfcc]">époque</span>, <span className="font-semibold text-[#5c3e21] dark:text-[#f0dfcc]">dimensions</span> et <span className="font-semibold text-[#5c3e21] dark:text-[#f0dfcc]">description</span>.
                 </p>
               </div>
             </div>
@@ -273,7 +274,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
               disabled={!formData.imageUrl || isAnalyzingAI}
               className={`px-4 py-2 rounded-md text-xs font-semibold flex items-center gap-2 transition-all shadow-xs flex-shrink-0 cursor-pointer ${
                 !formData.imageUrl
-                  ? 'bg-stone-200 text-stone-400 border border-stone-300 cursor-not-allowed'
+                  ? 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-300 dark:border-stone-700 cursor-not-allowed'
                   : isAnalyzingAI
                   ? 'bg-[#8c6239]/80 text-white cursor-wait'
                   : 'bg-[#8c6239] hover:bg-[#734f2d] text-white border border-[#6b4728] active:scale-[0.98]'
@@ -296,15 +297,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
 
           {/* Feedback messages for AI */}
           {aiSuccessMessage && (
-            <div className="px-3 py-2 bg-emerald-50 border border-emerald-300 rounded-md text-emerald-800 text-xs flex items-center justify-between gap-2 shadow-2xs">
+            <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-md text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                 <span className="font-medium">{aiSuccessMessage}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setAiSuccessMessage(null)}
-                className="text-emerald-700 hover:text-emerald-900 text-xs font-bold px-1"
+                className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 text-xs font-bold px-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -312,15 +313,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
           )}
 
           {aiErrorMessage && (
-            <div className="px-3 py-2 bg-amber-50 border border-amber-300 rounded-md text-amber-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+            <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-md text-amber-900 dark:text-amber-300 text-xs flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
                 <span>{aiErrorMessage}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setAiErrorMessage(null)}
-                className="text-amber-700 hover:text-amber-900 text-xs font-bold px-1"
+                className="text-amber-700 dark:text-amber-400 hover:text-amber-900 text-xs font-bold px-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -330,7 +331,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
           {/* Item Name & Ref */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 Nom du meuble / objet d'art * :
               </label>
               <input
@@ -339,11 +340,11 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: Commode sauteuse Louis XV en noyer"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] font-medium"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] font-medium"
               />
             </div>
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 Référence :
               </label>
               <input
@@ -351,15 +352,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.ref}
                 onChange={e => setFormData({ ...formData, ref: e.target.value })}
                 placeholder="CM-0101"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] font-mono"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] font-mono"
               />
             </div>
           </div>
 
           {/* Quantité & Catégorie */}
-          <div className="grid grid-cols-2 gap-3 p-3 bg-[#faf7f2] border border-[#e2d9ce] rounded">
+          <div className="grid grid-cols-2 gap-3 p-3 bg-[#faf7f2] dark:bg-[#251d17] border border-[#e2d9ce] dark:border-[#3d2f24] rounded">
             <div>
-              <label className="block font-bold text-[#5c3e21] mb-1">
+              <label className="block font-bold text-[#5c3e21] dark:text-[#f0dfcc] mb-1">
                 Quantité disponible * :
               </label>
               <input
@@ -368,7 +369,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.quantity}
                 onChange={e => setFormData({ ...formData, quantity: e.target.value })}
                 placeholder="Ex: 1 unit. / Lot de 4 / Paire"
-                className="w-full px-3 py-1.5 border border-[#c4a482] rounded bg-white font-semibold text-[#5c3e21] focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 border border-[#c4a482] dark:border-[#634b39] rounded bg-white dark:bg-[#2b211a] font-semibold text-[#5c3e21] dark:text-[#f5ede3] focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
               {/* Quick suggestions */}
               <div className="flex flex-wrap gap-1 mt-1.5">
@@ -377,10 +378,10 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                     key={q}
                     type="button"
                     onClick={() => handleQuickQuantity(q)}
-                    className={`text-[10px] px-2 py-0.5 rounded border ${
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
                       formData.quantity === q
                         ? 'bg-[#8c6239] text-white border-[#8c6239]'
-                        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                        : 'bg-white dark:bg-[#2f241d] text-stone-600 dark:text-[#dfd4c7] border-stone-200 dark:border-[#4a392c] hover:bg-stone-100 dark:hover:bg-[#382b22]'
                     }`}
                   >
                     {q}
@@ -390,21 +391,21 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 Dossier de classement :
               </label>
               <select
                 value={formData.folder || 'Antiquités'}
                 onChange={e => setFormData({ ...formData, folder: e.target.value })}
-                className="w-full px-3 py-1.5 border border-[#c4a482] rounded bg-white font-medium text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#8c6239] cursor-pointer"
+                className="w-full px-3 py-1.5 border border-[#c4a482] dark:border-[#634b39] rounded bg-white dark:bg-[#2b211a] font-medium text-stone-800 dark:text-[#f0dfcc] focus:outline-none focus:ring-1 focus:ring-[#8c6239] cursor-pointer"
               >
                 {availableFolders.map(f => (
-                  <option key={f} value={f}>
+                  <option key={f} value={f} className="bg-white dark:bg-[#2b211a] text-stone-900 dark:text-white">
                     📂 Dossier « {f} »
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-stone-500 mt-1">
+              <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
                 Permet de déplacer cet article vers un autre dossier.
               </p>
             </div>
@@ -413,10 +414,10 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
           {/* Matière, Époque/Style, État, Dimensions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-stone-700 mb-1 flex items-center justify-between">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
                 <span>Époque ou Style :</span>
-                <span className="text-[10px] text-[#8c6239] font-normal flex items-center gap-0.5">
-                  <Sparkles className="w-3 h-3 text-[#8c6239]" /> Auto IA
+                <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
+                  <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
                 </span>
               </label>
               <input
@@ -424,15 +425,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.periodOrStyle}
                 onChange={e => setFormData({ ...formData, periodOrStyle: e.target.value })}
                 placeholder="Ex: Époque Louis XV, XVIIIe siècle"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1 flex items-center justify-between">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
                 <span>Matière(s) & finitions :</span>
-                <span className="text-[10px] text-[#8c6239] font-normal flex items-center gap-0.5">
-                  <Sparkles className="w-3 h-3 text-[#8c6239]" /> Auto IA
+                <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
+                  <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
                 </span>
               </label>
               <input
@@ -440,12 +441,12 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.material}
                 onChange={e => setFormData({ ...formData, material: e.target.value })}
                 placeholder="Ex: Noyer massif sculpté, bronzes dorés"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 État de conservation :
               </label>
               <input
@@ -453,15 +454,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.condition}
                 onChange={e => setFormData({ ...formData, condition: e.target.value })}
                 placeholder="Ex: Superbe patine d'origine, usures d'usage"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1 flex items-center justify-between">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
                 <span>Dimensions :</span>
-                <span className="text-[10px] text-[#8c6239] font-normal flex items-center gap-0.5">
-                  <Sparkles className="w-3 h-3 text-[#8c6239]" /> Auto IA
+                <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
+                  <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
                 </span>
               </label>
               <input
@@ -469,7 +470,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.dimensions || ''}
                 onChange={e => setFormData({ ...formData, dimensions: e.target.value })}
                 placeholder="Ex: H: 86 cm × L: 124 cm × P: 62 cm"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded font-mono focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded font-mono focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
           </div>
@@ -477,7 +478,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
           {/* Prix & Description / Remarques */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 Prix / Estimation (optionnel) :
               </label>
               <input
@@ -485,14 +486,14 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.price || ''}
                 onChange={e => setFormData({ ...formData, price: e.target.value })}
                 placeholder="Ex: 1 850 €"
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block font-semibold text-stone-700 mb-1 flex items-center justify-between">
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
                 <span>Description & Remarques (notice catalogue) :</span>
-                <span className="text-[10px] text-[#8c6239] font-normal flex items-center gap-0.5">
-                  <Sparkles className="w-3 h-3 text-[#8c6239]" /> Auto IA
+                <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
+                  <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
                 </span>
               </label>
               <textarea
@@ -500,13 +501,13 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 value={formData.notes || ''}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Ex: Ouvrant par 3 tiroirs, serrures d'origine en bronze ciselé..."
-                className="w-full px-3 py-1.5 border border-stone-300 rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] leading-relaxed resize-y"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] leading-relaxed resize-y"
               />
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-stone-200 flex justify-between items-center">
+          <div className="pt-4 border-t border-stone-200 dark:border-[#382b21] flex justify-between items-center">
             {onDelete ? (
               <button
                 type="button"
@@ -516,7 +517,7 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                     onClose();
                   }
                 }}
-                className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded border border-red-200 flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded border border-red-200 dark:border-red-900/60 flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Supprimer l'article
@@ -527,13 +528,13 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded border border-stone-200 cursor-pointer"
+                className="px-4 py-1.5 text-xs text-stone-600 dark:text-[#dfd4c7] hover:bg-stone-100 dark:hover:bg-[#2e231b] rounded border border-stone-200 dark:border-[#4d3b2d] cursor-pointer transition-colors"
               >
                 Annuler
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8c6239] hover:bg-[#734f2d] rounded shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8c6239] hover:bg-[#734f2d] rounded shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Check className="w-3.5 h-3.5" />
                 Enregistrer la fiche

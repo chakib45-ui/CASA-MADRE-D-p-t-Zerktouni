@@ -6,6 +6,7 @@ import {
   Layers, 
   Sparkles, 
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   FolderTree,
   Search,
@@ -22,6 +23,7 @@ interface FolderControlBarProps {
   onChangeFolder: (folder: string) => void;
   onOpenNewFolder: () => void;
   onOpenEditFolder: () => void;
+  onBackFolder?: () => void;
 }
 
 export const FolderControlBar: React.FC<FolderControlBarProps> = ({
@@ -33,6 +35,7 @@ export const FolderControlBar: React.FC<FolderControlBarProps> = ({
   onChangeFolder,
   onOpenNewFolder,
   onOpenEditFolder,
+  onBackFolder,
 }) => {
   // Count articles per folder
   const getCountForFolder = (folderName: string) => {
@@ -109,6 +112,19 @@ export const FolderControlBar: React.FC<FolderControlBarProps> = ({
           <Edit3 className="w-3.5 h-3.5 text-[#c4a482]" />
           <span>Modifier dossier</span>
         </button>
+
+        {/* Bouton "⬅️ Retour" */}
+        {onBackFolder && (
+          <button
+            type="button"
+            onClick={onBackFolder}
+            className="px-3 py-1.5 bg-[#2a211a] hover:bg-[#3d3026] text-[#dfd4c5] hover:text-white font-medium text-xs rounded border border-[#4a392e] flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Revenir au dossier Antiquités ou réinitialiser le filtre"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[#c4a482]" />
+            <span>Retour</span>
+          </button>
+        )}
 
         {/* Global search status badge if active */}
         {globalSearch && globalSearch.trim().length > 0 && (

@@ -114,6 +114,7 @@ export const DEFAULT_CONFIG: CatalogConfig = {
   headerEveryPage: true,
   notesFooter: 'CASA MADRE — Dépôt Zerktouni • Expertise & authenticité garanties',
   cleanScanEffect: true,
+  uiDarkMode: false,
 };
 
 export const INITIAL_ARTICLES: ArticleItem[] = [

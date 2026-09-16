@@ -172,6 +172,23 @@ export default function App() {
     }
   }, [config]);
 
+  // Synchronize Dark Mode class with root document
+  useEffect(() => {
+    if (config.uiDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [config.uiDarkMode]);
+
+  const handleToggleDarkMode = () => {
+    setConfig(prev => {
+      const nextMode = !prev.uiDarkMode;
+      showToast(nextMode ? 'Mode Sombre activé' : 'Mode Clair activé');
+      return { ...prev, uiDarkMode: nextMode };
+    });
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -206,6 +223,26 @@ export default function App() {
       activeFolder: newFolder,
       collection: newFolder === 'all' ? (prev.collection || 'Halloween') : newFolder,
     }));
+  };
+
+  const handleBackFolder = () => {
+    if (globalSearch) {
+      setGlobalSearch('');
+      return;
+    }
+    if (activeFolder.toLowerCase() !== 'antiquités') {
+      handleSelectFolder('Antiquités');
+      showToast('Retour au dossier « Antiquités »');
+    } else if (folders.includes('Halloween')) {
+      handleSelectFolder('Halloween');
+      showToast('Navigation vers le dossier « Halloween »');
+    } else if (folders.length > 1) {
+      const other = folders.find(f => f.toLowerCase() !== 'antiquités');
+      if (other) {
+        handleSelectFolder(other);
+        showToast(`Navigation vers « ${other} »`);
+      }
+    }
   };
 
   const handleCreateFolder = (newFolderName: string) => {
@@ -529,7 +566,7 @@ export default function App() {
   const totalPages = Math.max(1, Math.ceil(displayedArticles.length / getItemsPerPage()));
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#f4f1eb]">
+    <div className={`flex flex-col h-screen w-screen overflow-hidden bg-[#f4f1eb] dark:bg-[#120d0a] transition-colors ${config.uiDarkMode ? 'dark' : ''}`}>
       {/* Top Header */}
       <Header
         config={config}
@@ -542,6 +579,8 @@ export default function App() {
         onOpenHeaderSettings={() => setIsHeaderSettingsOpen(true)}
         onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
         onOpenScanner={() => setIsScannerOpen(true)}
+        isDarkMode={!!config.uiDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
         isExporting={isExporting}
         exportStatus={exportStatus}
       />
@@ -556,6 +595,7 @@ export default function App() {
         onChangeFolder={handleSelectFolder}
         onOpenNewFolder={() => setIsFolderCreateOpen(true)}
         onOpenEditFolder={() => setIsFolderEditOpen(true)}
+        onBackFolder={handleBackFolder}
       />
 
       {/* Catalog Layout & Theme Controls */}
@@ -564,6 +604,7 @@ export default function App() {
         onChangeConfig={setConfig}
         totalPages={totalPages}
         totalArticles={displayedArticles.length}
+        onPrint={() => setIsPrintModalOpen(true)}
       />
 
       {/* Main Workspace: Left Sidebar + Right A4 Viewer */}

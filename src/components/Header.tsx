@@ -11,7 +11,9 @@ import {
   BookOpen,
   HelpCircle,
   FileCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 import { ArticleItem, CatalogConfig } from '../types';
@@ -28,6 +30,8 @@ interface HeaderProps {
   onOpenHeaderSettings: () => void;
   onOpenBatchUpload: () => void;
   onOpenScanner?: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
   isExporting: boolean;
   exportStatus: string;
 }
@@ -43,6 +47,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHeaderSettings,
   onOpenBatchUpload,
   onOpenScanner,
+  isDarkMode = false,
+  onToggleDarkMode,
   isExporting,
   exportStatus,
 }) => {
@@ -144,6 +150,32 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Camera className="w-3.5 h-3.5 text-[#ffdca8]" />
             <span>Scanner</span>
+          </button>
+        )}
+
+        {/* Mode Sombre / Dark Mode UI Toggle */}
+        {onToggleDarkMode && (
+          <button
+            type="button"
+            onClick={onToggleDarkMode}
+            className={`px-3 py-1.5 text-xs font-semibold rounded border flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+              isDarkMode
+                ? 'bg-[#47382b] text-amber-300 border-[#7a5f47] hover:bg-[#574536]'
+                : 'bg-[#352c25] text-[#e8dacb] border-[#52443a] hover:bg-[#43382f]'
+            }`}
+            title={isDarkMode ? 'Passer en Mode Clair' : 'Activer le Mode Sombre pour réduire la fatigue visuelle lors de la saisie'}
+          >
+            {isDarkMode ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Mode Clair</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">Mode Sombre</span>
+              </>
+            )}
           </button>
         )}
 
