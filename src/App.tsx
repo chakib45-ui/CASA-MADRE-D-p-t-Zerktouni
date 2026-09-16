@@ -602,9 +602,6 @@ export default function App() {
       <CatalogControls
         config={config}
         onChangeConfig={setConfig}
-        totalPages={totalPages}
-        totalArticles={displayedArticles.length}
-        onPrint={() => setIsPrintModalOpen(true)}
       />
 
       {/* Main Workspace: Left Sidebar + Right A4 Viewer */}

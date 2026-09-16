@@ -1,32 +1,17 @@
 import React from 'react';
 import { 
-  Sun,
-  Moon, 
-  LayoutGrid, 
-  Printer, 
-  Sliders, 
-  Settings2,
-  Eye,
-  Calendar,
-  Layers,
-  Sparkles
+  LayoutGrid
 } from 'lucide-react';
 import { CatalogConfig, LayoutMode, ThemeId } from '../types';
 
 interface CatalogControlsProps {
   config: CatalogConfig;
   onChangeConfig: (newConfig: CatalogConfig) => void;
-  totalPages?: number;
-  totalArticles?: number;
-  onPrint?: () => void;
 }
 
 export const CatalogControls: React.FC<CatalogControlsProps> = ({
   config,
   onChangeConfig,
-  totalPages,
-  totalArticles,
-  onPrint,
 }) => {
   const updateField = <K extends keyof CatalogConfig>(key: K, value: CatalogConfig[K]) => {
     onChangeConfig({
@@ -118,20 +103,6 @@ export const CatalogControls: React.FC<CatalogControlsProps> = ({
             <span>En-tête sur chaque page</span>
           </label>
         </div>
-      </div>
-
-      {/* Option Imprimer A4 (remplace le badge 20 pages A4 40 articles) */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          type="button"
-          id="catalog-print-a4-btn"
-          onClick={onPrint}
-          className="flex items-center gap-1.5 px-3 py-1 bg-[#8c6239] hover:bg-[#734f2d] active:bg-[#5c3e21] text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex-shrink-0 cursor-pointer"
-          title="Ouvrir les options d'impression A4 (toutes les pages, sélection par page, aperçu propre ou PDF)"
-        >
-          <Printer className="w-3.5 h-3.5 text-amber-200" />
-          <span>Option Imprimer A4</span>
-        </button>
       </div>
     </div>
   );
