@@ -73,6 +73,119 @@ export async function setStoredItem<T>(key: string, value: T): Promise<void> {
 }
 
 /**
+ * Force synchronization and repair between memory, IndexedDB and localStorage,
+ * restoring any items with missing folder, invalid fields, or hidden status.
+ */
+export async function repairAndSyncLibrary(
+  currentMemoryArticles: ArticleItem[],
+  defaultArticles: ArticleItem[]
+): Promise<{ articles: ArticleItem[]; restoredCount: number; info: string }> {
+  const mergedMap = new Map<string, ArticleItem>();
+
+  // 1. Add baseline default articles
+  for (const art of defaultArticles) {
+    if (art && art.id) {
+      mergedMap.set(art.id, { ...art, folder: art.folder || 'Antiquités' });
+    }
+  }
+
+  // 2. Read all data currently in IndexedDB
+  try {
+    const idbArticles = await getStoredItem<ArticleItem[]>('casamadre_articles');
+    if (Array.isArray(idbArticles)) {
+      for (const art of idbArticles) {
+        if (art && (art.id || art.name)) {
+          const key = art.id || `restored-${Math.random().toString(36).substring(2, 9)}`;
+          mergedMap.set(key, { ...art, id: key, folder: art.folder || 'Antiquités' });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error reading IndexedDB during repair:', err);
+  }
+
+  // 3. Check localStorage for any legacy or backup items
+  try {
+    const keysToCheck = ['casamadre_articles', 'casamadre_articles_backup', 'casamadre_saved_items'];
+    for (const k of keysToCheck) {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            for (const art of parsed) {
+              if (art && (art.id || art.name)) {
+                const key = art.id || `restored-local-${Math.random().toString(36).substring(2, 9)}`;
+                mergedMap.set(key, { ...art, id: key, folder: art.folder || 'Antiquités' });
+              }
+            }
+          }
+        } catch {
+          // ignore parsing error
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error checking localStorage during repair:', err);
+  }
+
+  // 4. Incorporate current memory articles
+  for (const art of currentMemoryArticles) {
+    if (art && art.id) {
+      mergedMap.set(art.id, { ...art, folder: art.folder || 'Antiquités' });
+    }
+  }
+
+  // 5. Sanitize and repair every article
+  const repairedList: ArticleItem[] = Array.from(mergedMap.values()).map((art, idx) => {
+    const id = art.id || `art-${Date.now()}-${idx}`;
+    const name = (art.name && art.name.trim()) ? art.name.trim() : `Article sans titre #${idx + 1}`;
+    const folder = (art.folder && art.folder.trim()) ? art.folder.trim() : 'Antiquités';
+    return {
+      ...art,
+      id,
+      name,
+      folder,
+      material: art.material || '',
+      periodOrStyle: art.periodOrStyle || '',
+      condition: art.condition || '',
+      dimensions: art.dimensions || '',
+      quantity: art.quantity || '1',
+      price: art.price || '',
+      notes: art.notes || '',
+      imageUrl: art.imageUrl || '',
+    };
+  });
+
+  // 6. Force write to IndexedDB
+  await setStoredItem('casamadre_articles', repairedList);
+
+  // 7. Store a lightweight safety copy in localStorage if size permits
+  try {
+    const miniCopy = repairedList.map(a => ({
+      id: a.id,
+      name: a.name,
+      folder: a.folder,
+      ref: a.ref,
+      quantity: a.quantity,
+      price: a.price,
+      // exclude huge image base64 in localStorage to avoid QuotaExceededError
+      imageUrl: a.imageUrl?.startsWith('data:') ? '' : a.imageUrl,
+    }));
+    localStorage.setItem('casamadre_articles_manifest', JSON.stringify(miniCopy));
+  } catch {
+    // ignore
+  }
+
+  const restoredCount = repairedList.length;
+  return {
+    articles: repairedList,
+    restoredCount,
+    info: `${restoredCount} articles synchronisés et restaurés dans la base locale (IndexedDB).`,
+  };
+}
+
+/**
  * Migrates data from localStorage to IndexedDB and cleans up localStorage to free quota.
  */
 export async function migrateFromLocalStorage(): Promise<ArticleItem[] | null> {
@@ -82,7 +195,6 @@ export async function migrateFromLocalStorage(): Promise<ArticleItem[] | null> {
       const parsed = JSON.parse(localArticles) as ArticleItem[];
       if (Array.isArray(parsed) && parsed.length > 0) {
         await setStoredItem('casamadre_articles', parsed);
-        // Safely remove the large payload from localStorage to free browser storage quota
         try {
           localStorage.removeItem('casamadre_articles');
         } catch {

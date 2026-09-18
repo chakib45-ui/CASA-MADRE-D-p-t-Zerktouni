@@ -17,7 +17,7 @@ import { ImageViewerModal } from './components/ImageViewerModal';
 import { CameraCaptureModal } from './components/CameraCaptureModal';
 import { exportCatalogToPDF, printCatalogViaBrowser } from './utils/pdfExport';
 import { exportCatalogToExcel } from './utils/excelExport';
-import { getStoredItem, setStoredItem, migrateFromLocalStorage } from './utils/storage';
+import { getStoredItem, setStoredItem, migrateFromLocalStorage, repairAndSyncLibrary } from './utils/storage';
 import { isImageFile, extractFilesFromDataTransfer } from './utils/imageOptimizer';
 
 export default function App() {
@@ -475,6 +475,25 @@ export default function App() {
     }
   };
 
+  // Repair and synchronize library
+  const handleRepairLibrary = async () => {
+    const res = await repairAndSyncLibrary(articles, INITIAL_ARTICLES);
+    setArticles(res.articles);
+    // Also ensure config folders are updated if any new folders appear
+    const discoveredFolders = Array.from(new Set(res.articles.map(a => a.folder || 'Antiquités').filter(Boolean)));
+    const mergedFolders = Array.from(new Set([...folders, ...discoveredFolders]));
+    if (mergedFolders.length > folders.length) {
+      const updatedConfig: CatalogConfig = {
+        ...config,
+        folders: mergedFolders,
+      };
+      setConfig(updatedConfig);
+      await setStoredItem('casamadre_config', updatedConfig);
+    }
+    showToast(`Bibliothèque réparée : ${res.restoredCount} article(s) synchronisé(s)`);
+    return { restoredCount: res.restoredCount, info: res.info };
+  };
+
   // Trigger export flow
   const handleRequestDownloadPDF = () => {
     if (activeFolder !== 'all' && articles.length > displayedArticles.length) {
@@ -585,6 +604,12 @@ export default function App() {
         exportStatus={exportStatus}
       />
 
+      {/* Catalog Layout & Theme Controls (au-dessous de la recherche par nom du header) */}
+      <CatalogControls
+        config={config}
+        onChangeConfig={setConfig}
+      />
+
       {/* Barre de contrôle des dossiers (Dropdown + Actions) */}
       <FolderControlBar
         folders={folders}
@@ -596,12 +621,6 @@ export default function App() {
         onOpenNewFolder={() => setIsFolderCreateOpen(true)}
         onOpenEditFolder={() => setIsFolderEditOpen(true)}
         onBackFolder={handleBackFolder}
-      />
-
-      {/* Catalog Layout & Theme Controls */}
-      <CatalogControls
-        config={config}
-        onChangeConfig={setConfig}
       />
 
       {/* Main Workspace: Left Sidebar + Right A4 Viewer */}
@@ -620,6 +639,7 @@ export default function App() {
           onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
           onAddNewManual={handleAddNewManual}
           onResetToDefault={handleResetToDefault}
+          onRepairLibrary={handleRepairLibrary}
         />
 
         {/* Live A4 Sheet Preview */}
@@ -749,6 +769,7 @@ export default function App() {
         onClose={() => setIsHeaderSettingsOpen(false)}
         config={config}
         onSave={setConfig}
+        onRepairLibrary={handleRepairLibrary}
       />
 
       {/* Floating Notification Toast */}

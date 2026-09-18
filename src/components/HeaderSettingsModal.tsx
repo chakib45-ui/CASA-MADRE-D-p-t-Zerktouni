@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Check, RefreshCw, ShieldCheck, Database } from 'lucide-react';
 import { CatalogConfig } from '../types';
 import { DEFAULT_CONFIG } from '../data/defaultCatalog';
 
@@ -8,6 +8,7 @@ interface HeaderSettingsModalProps {
   onClose: () => void;
   config?: CatalogConfig;
   onSave: (newConfig: CatalogConfig) => void;
+  onRepairLibrary?: () => Promise<{ restoredCount: number; info: string }>;
 }
 
 export const HeaderSettingsModal: React.FC<HeaderSettingsModalProps> = ({
@@ -15,8 +16,11 @@ export const HeaderSettingsModal: React.FC<HeaderSettingsModalProps> = ({
   onClose,
   config = DEFAULT_CONFIG,
   onSave,
+  onRepairLibrary,
 }) => {
   const [formData, setFormData] = React.useState<CatalogConfig>(config || DEFAULT_CONFIG);
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [repairStatus, setRepairStatus] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (config) {
@@ -33,6 +37,21 @@ export const HeaderSettingsModal: React.FC<HeaderSettingsModalProps> = ({
     e.preventDefault();
     onSave(formData);
     onClose();
+  };
+
+  const handleRepair = async () => {
+    if (!onRepairLibrary) return;
+    try {
+      setIsRepairing(true);
+      setRepairStatus(null);
+      const res = await onRepairLibrary();
+      setRepairStatus(`Succès : ${res.restoredCount} article(s) synchronisés et restaurés.`);
+    } catch (err) {
+      console.error(err);
+      setRepairStatus('Erreur lors de la réparation de la bibliothèque.');
+    } finally {
+      setIsRepairing(false);
+    }
   };
 
   return (
@@ -148,6 +167,38 @@ export const HeaderSettingsModal: React.FC<HeaderSettingsModalProps> = ({
               className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-800 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded font-garamond italic"
             />
           </div>
+
+          {/* Section Réparation & Synchronisation de la bibliothèque */}
+          {onRepairLibrary && (
+            <div className="p-3 bg-[#faf7f2] dark:bg-[#271e18] border border-[#e2d9ce] dark:border-[#453426] rounded-md space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#8c6239] dark:text-[#d4a373]" />
+                  <span className="font-semibold text-xs text-stone-800 dark:text-[#f0dfcc]">
+                    Maintenance & Base d'articles
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRepair}
+                  disabled={isRepairing}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-[#5c3e21] hover:bg-[#432d18] disabled:opacity-50 rounded flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRepairing ? 'animate-spin' : ''}`} />
+                  <span>{isRepairing ? 'Synchronisation...' : 'Réparer la bibliothèque'}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-stone-500 dark:text-[#a8988a] leading-relaxed">
+                Force la synchronisation entre l'application et la base locale (IndexedDB), restaure les articles masqués ou orphelins et répare les dossiers.
+              </p>
+              {repairStatus && (
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded border border-emerald-200 dark:border-emerald-800">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>{repairStatus}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="pt-3 border-t border-stone-200 dark:border-[#382b21] flex justify-end gap-2">
             <button

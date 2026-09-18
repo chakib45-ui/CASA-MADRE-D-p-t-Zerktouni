@@ -11,7 +11,8 @@ import {
   Search,
   PackageCheck,
   ZoomIn,
-  Download
+  Download,
+  Wrench
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { downloadImageFile } from '../utils/imageOptimizer';
@@ -29,6 +30,7 @@ interface InventorySidebarProps {
   onOpenBatchUpload: () => void;
   onAddNewManual: () => void;
   onResetToDefault: () => void;
+  onRepairLibrary?: () => void;
 }
 
 export const InventorySidebar: React.FC<InventorySidebarProps> = ({
@@ -44,6 +46,7 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
   onOpenBatchUpload,
   onAddNewManual,
   onResetToDefault,
+  onRepairLibrary,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -85,15 +88,28 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
               </span>
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onResetToDefault}
-            title="Réinitialiser avec les exemples"
-            className="text-[11px] text-stone-500 dark:text-stone-400 hover:text-[#8c6239] dark:hover:text-[#d4a373] flex items-center gap-1 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Modèles
-          </button>
+          <div className="flex items-center gap-2">
+            {onRepairLibrary && (
+              <button
+                type="button"
+                onClick={onRepairLibrary}
+                title="Réparer la bibliothèque & synchroniser IndexedDB"
+                className="text-[11px] text-[#8c6239] dark:text-[#d4a373] hover:text-[#5c3e21] dark:hover:text-[#f3dfcc] flex items-center gap-1 transition-colors cursor-pointer font-medium"
+              >
+                <Wrench className="w-3 h-3" />
+                Réparer
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onResetToDefault}
+              title="Réinitialiser avec les exemples"
+              className="text-[11px] text-stone-500 dark:text-stone-400 hover:text-[#8c6239] dark:hover:text-[#d4a373] flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Modèles
+            </button>
+          </div>
         </div>
 
         {/* Global search active alert banner */}
