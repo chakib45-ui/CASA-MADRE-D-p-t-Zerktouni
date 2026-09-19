@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { PanelLeftOpen } from 'lucide-react';
 import { ArticleItem, CatalogConfig } from './types';
 import { INITIAL_ARTICLES, DEFAULT_CONFIG } from './data/defaultCatalog';
 import { Header } from './components/Header';
@@ -45,6 +46,9 @@ export default function App() {
 
   // Global search bar state (Header)
   const [globalSearch, setGlobalSearch] = useState<string>('');
+
+  // État d'affichage de la barre latérale des articles (Masqué / Montré)
+  const [isSidebarVisible, setIsSidebarVisible] = useState<boolean>(true);
 
   // PDF generation state
   const [isExporting, setIsExporting] = useState(false);
@@ -604,13 +608,7 @@ export default function App() {
         exportStatus={exportStatus}
       />
 
-      {/* Catalog Layout & Theme Controls (au-dessous de la recherche par nom du header) */}
-      <CatalogControls
-        config={config}
-        onChangeConfig={setConfig}
-      />
-
-      {/* Barre de contrôle des dossiers (Dropdown + Actions) */}
+      {/* Barre d'outils unifiée et strictement latérale (Dossiers à gauche, Options catalogue à droite sur une seule ligne) */}
       <FolderControlBar
         folders={folders}
         activeFolder={activeFolder}
@@ -621,26 +619,49 @@ export default function App() {
         onOpenNewFolder={() => setIsFolderCreateOpen(true)}
         onOpenEditFolder={() => setIsFolderEditOpen(true)}
         onBackFolder={handleBackFolder}
+        config={config}
+        onChangeConfig={setConfig}
+        isSidebarVisible={isSidebarVisible}
+        onToggleSidebar={() => setIsSidebarVisible(prev => !prev)}
       />
 
       {/* Main Workspace: Left Sidebar + Right A4 Viewer */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <InventorySidebar
-          articles={articles}
-          activeFolder={activeFolder}
-          globalSearch={globalSearch}
-          onClearGlobalSearch={() => setGlobalSearch('')}
-          onSelectArticle={setEditingArticle}
-          onViewImage={setViewingImageArticle}
-          onMoveArticle={handleMoveArticle}
-          onDuplicateArticle={handleDuplicateArticle}
-          onDeleteArticle={handleDeleteArticle}
-          onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
-          onAddNewManual={handleAddNewManual}
-          onResetToDefault={handleResetToDefault}
-          onRepairLibrary={handleRepairLibrary}
-        />
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar (Peut être masquée ou montrée) */}
+        {isSidebarVisible && (
+          <InventorySidebar
+            articles={articles}
+            folders={folders}
+            activeFolder={activeFolder}
+            onChangeFolder={handleSelectFolder}
+            onOpenNewFolder={() => setIsFolderCreateOpen(true)}
+            globalSearch={globalSearch}
+            onClearGlobalSearch={() => setGlobalSearch('')}
+            onSelectArticle={setEditingArticle}
+            onViewImage={setViewingImageArticle}
+            onMoveArticle={handleMoveArticle}
+            onDuplicateArticle={handleDuplicateArticle}
+            onDeleteArticle={handleDeleteArticle}
+            onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
+            onAddNewManual={handleAddNewManual}
+            onResetToDefault={handleResetToDefault}
+            onRepairLibrary={handleRepairLibrary}
+            onToggleSidebar={() => setIsSidebarVisible(false)}
+          />
+        )}
+
+        {/* Bouton d'accès rapide pour ré-afficher la liste si elle est masquée */}
+        {!isSidebarVisible && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarVisible(true)}
+            title="Montrer la liste des articles"
+            className="absolute left-3 top-3 z-30 px-3 py-1.5 bg-[#8c6239] hover:bg-[#734f2d] text-white rounded shadow-md border border-[#aa7a4a] flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all hover:scale-105 select-none no-print"
+          >
+            <PanelLeftOpen className="w-3.5 h-3.5 text-white" />
+            <span>Montrer la liste</span>
+          </button>
+        )}
 
         {/* Live A4 Sheet Preview */}
         <CatalogPreview

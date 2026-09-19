@@ -12,14 +12,19 @@ import {
   PackageCheck,
   ZoomIn,
   Download,
-  Wrench
+  Wrench,
+  FolderTree,
+  PanelLeftClose
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { downloadImageFile } from '../utils/imageOptimizer';
 
 interface InventorySidebarProps {
   articles: ArticleItem[];
+  folders?: string[];
   activeFolder?: string;
+  onChangeFolder?: (folder: string) => void;
+  onOpenNewFolder?: () => void;
   globalSearch?: string;
   onClearGlobalSearch?: () => void;
   onSelectArticle: (article: ArticleItem) => void;
@@ -31,11 +36,15 @@ interface InventorySidebarProps {
   onAddNewManual: () => void;
   onResetToDefault: () => void;
   onRepairLibrary?: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export const InventorySidebar: React.FC<InventorySidebarProps> = ({
   articles,
+  folders,
   activeFolder = 'Halloween',
+  onChangeFolder,
+  onOpenNewFolder,
   globalSearch = '',
   onClearGlobalSearch,
   onSelectArticle,
@@ -47,6 +56,7 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
   onAddNewManual,
   onResetToDefault,
   onRepairLibrary,
+  onToggleSidebar,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -109,8 +119,57 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
               <RotateCcw className="w-3 h-3" />
               Modèles
             </button>
+            {onToggleSidebar && (
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                title="Masquer la liste"
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-colors cursor-pointer ml-0.5"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Sélecteur de dossier latéral */}
+        {folders && onChangeFolder && (
+          <div className="mb-2.5 flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <select
+                value={activeFolder}
+                onChange={e => onChangeFolder(e.target.value)}
+                className="w-full appearance-none bg-white dark:bg-[#271e18] text-stone-800 dark:text-[#faf6f0] border border-stone-300 dark:border-[#423327] rounded px-2.5 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#8c6239] cursor-pointer shadow-2xs pr-7"
+                title="Changer de dossier"
+              >
+                {folders.map(f => {
+                  const count = articles.filter(a => (a.folder || 'Antiquités').toLowerCase() === f.toLowerCase()).length;
+                  return (
+                    <option key={f} value={f}>
+                      📂 {f} ({count})
+                    </option>
+                  );
+                })}
+                <option value="all">📁 Tous les dossiers ({articles.length})</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#8c6239] dark:text-[#c4a482]">
+                <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            {onOpenNewFolder && (
+              <button
+                type="button"
+                onClick={onOpenNewFolder}
+                title="Créer un nouveau dossier"
+                className="p-1.5 rounded bg-[#8c6239] hover:bg-[#734f2d] text-white flex-shrink-0 cursor-pointer shadow-2xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Global search active alert banner */}
         {isGlobalSearchActive && (
