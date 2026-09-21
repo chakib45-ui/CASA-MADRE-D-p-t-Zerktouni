@@ -15,8 +15,9 @@ import {
   Moon
 } from 'lucide-react';
 
-import { ArticleItem, CatalogConfig } from '../types';
+import { ArticleItem, CatalogConfig, UserProfile } from '../types';
 import { DEFAULT_CONFIG } from '../data/defaultCatalog';
+import { AuthStatus } from './AuthStatus';
 
 interface HeaderProps {
   config?: CatalogConfig;
@@ -33,6 +34,12 @@ interface HeaderProps {
   onToggleDarkMode?: () => void;
   isExporting: boolean;
   exportStatus: string;
+  user?: UserProfile | null;
+  isAuthLoading?: boolean;
+  syncStatus?: 'synced' | 'syncing' | 'offline' | 'error';
+  onSignIn?: () => void;
+  onSignOut?: () => void;
+  onManualSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,6 +57,12 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleDarkMode,
   isExporting,
   exportStatus,
+  user = null,
+  isAuthLoading = false,
+  syncStatus = 'offline',
+  onSignIn = () => {},
+  onSignOut = () => {},
+  onManualSync
 }) => {
   const safeConfig = config || DEFAULT_CONFIG;
   return (
@@ -208,6 +221,19 @@ export const Header: React.FC<HeaderProps> = ({
             </>
           )}
         </button>
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-[#3d332c] flex-shrink-0" />
+
+        {/* Firebase Google Auth & Cloud Sync */}
+        <AuthStatus
+          user={user}
+          isLoading={isAuthLoading}
+          syncStatus={syncStatus}
+          onSignIn={onSignIn}
+          onSignOut={onSignOut}
+          onManualSync={onManualSync}
+        />
       </div>
     </header>
   );

@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile with display info and role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "articles": {
+      "title": "Article",
+      "description": "Catalog item/article managed by the user or shared within catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "imageFit": { "type": "string" },
+        "folder": { "type": "string" },
+        "category": { "type": "string" },
+        "material": { "type": "string" },
+        "periodOrStyle": { "type": "string" },
+        "condition": { "type": "string" },
+        "dimensions": { "type": "string" },
+        "quantity": { "type": "string" },
+        "price": { "type": "string" },
+        "notes": { "type": "string" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "ref", "name", "userId"]
+    },
+    "catalogConfig": {
+      "title": "CatalogConfig",
+      "description": "User catalog settings, folders and layout options",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mainTitle": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "collection": { "type": "string" },
+        "activeFolder": { "type": "string" },
+        "folders": { "type": "array", "items": { "type": "string" } },
+        "contactInfo": { "type": "string" },
+        "dateStr": { "type": "string" },
+        "catalogRef": { "type": "string" },
+        "layoutMode": { "type": "string" },
+        "themeId": { "type": "string" },
+        "showPrices": { "type": "boolean" },
+        "showDimensions": { "type": "boolean" },
+        "showReference": { "type": "boolean" },
+        "headerEveryPage": { "type": "boolean" },
+        "notesFooter": { "type": "string" },
+        "cleanScanEffect": { "type": "boolean" },
+        "uiDarkMode": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User document storing authentication and account data"
+    },
+    "/users/{userId}/articles/{articleId}": {
+      "schema": "articles",
+      "description": "Articles belonging to a specific user"
+    },
+    "/users/{userId}/config/catalog": {
+      "schema": "catalogConfig",
+      "description": "Catalog configuration document for a specific user"
+    }
+  }
+}

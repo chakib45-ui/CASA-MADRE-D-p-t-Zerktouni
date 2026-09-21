@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
-import { ArticleItem, CatalogConfig } from './types';
+import { ArticleItem, CatalogConfig, UserProfile } from './types';
 import { INITIAL_ARTICLES, DEFAULT_CONFIG } from './data/defaultCatalog';
 import { Header } from './components/Header';
 import { FolderControlBar } from './components/FolderControlBar';
@@ -20,11 +20,33 @@ import { exportCatalogToPDF, printCatalogViaBrowser } from './utils/pdfExport';
 import { exportCatalogToExcel } from './utils/excelExport';
 import { getStoredItem, setStoredItem, migrateFromLocalStorage, repairAndSyncLibrary } from './utils/storage';
 import { isImageFile, extractFilesFromDataTransfer } from './utils/imageOptimizer';
+import { 
+  auth, 
+  signInWithGoogle, 
+  signOutUser, 
+  onAuthStateChanged 
+} from './lib/firebase';
+import { 
+  syncUserProfile, 
+  syncArticleToFirestore, 
+  syncAllArticlesToFirestore, 
+  deleteArticleFromFirestore, 
+  syncConfigToFirestore, 
+  fetchUserArticlesFromFirestore, 
+  fetchUserConfigFromFirestore 
+} from './lib/firestoreSync';
 
 export default function App() {
   const [articles, setArticles] = useState<ArticleItem[]>(INITIAL_ARTICLES);
   const [config, setConfig] = useState<CatalogConfig>(DEFAULT_CONFIG);
   const isLoadedRef = useRef(false);
+
+  // Firebase Auth state & Sync status
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('offline');
+  const userRef = useRef<UserProfile | null>(null);
+  userRef.current = currentUser;
 
   // Folder modals state
   const [isFolderCreateOpen, setIsFolderCreateOpen] = useState(false);
@@ -54,6 +76,109 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setIsAuthLoading(true);
+      if (user) {
+        const profile: UserProfile = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        };
+        setCurrentUser(profile);
+        userRef.current = profile;
+        setSyncStatus('syncing');
+
+        try {
+          // Record/update user doc
+          await syncUserProfile(profile);
+
+          // Fetch remote articles and config
+          const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
+          const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
+
+          if (remoteArticles && remoteArticles.length > 0) {
+            setArticles(remoteArticles);
+            await setStoredItem('casamadre_articles', remoteArticles);
+          } else {
+            // First time login for this user: sync current local articles to their Firestore
+            const localArticles = await getStoredItem<ArticleItem[]>('casamadre_articles') || articles;
+            if (localArticles && localArticles.length > 0) {
+              await syncAllArticlesToFirestore(user.uid, localArticles);
+            }
+          }
+
+          if (remoteConfig) {
+            setConfig(remoteConfig);
+            await setStoredItem('casamadre_config', remoteConfig);
+          } else {
+            await syncConfigToFirestore(user.uid, config);
+          }
+
+          setSyncStatus('synced');
+          showToast(`Connecté avec succès : ${user.displayName || user.email}`);
+        } catch (err: any) {
+          console.error('Error syncing with Firestore on login:', err);
+          setSyncStatus('error');
+          showToast('Synchronisation Cloud : utilisation du cache local');
+        } finally {
+          setIsAuthLoading(false);
+        }
+      } else {
+        setCurrentUser(null);
+        userRef.current = null;
+        setSyncStatus('offline');
+        setIsAuthLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Google sign in / out handlers
+  const handleSignIn = async () => {
+    try {
+      setIsAuthLoading(true);
+      await signInWithGoogle();
+    } catch (err: any) {
+      console.error('Google Sign In Error:', err);
+      setIsAuthLoading(false);
+      showToast('Échec de connexion Google. Veuillez réessayer.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      setCurrentUser(null);
+      userRef.current = null;
+      setSyncStatus('offline');
+      showToast('Déconnexion réussie');
+    } catch (err) {
+      console.error('Sign Out Error:', err);
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!currentUser) {
+      showToast('Connectez-vous pour synchroniser avec Firestore Cloud');
+      return;
+    }
+    try {
+      setSyncStatus('syncing');
+      await syncAllArticlesToFirestore(currentUser.uid, articles);
+      await syncConfigToFirestore(currentUser.uid, config);
+      setSyncStatus('synced');
+      showToast('Tous les articles ont été synchronisés avec Firestore');
+    } catch (err) {
+      console.error('Manual sync failed:', err);
+      setSyncStatus('error');
+      showToast('Erreur lors de la synchronisation cloud');
+    }
+  };
 
   // Initial load from IndexedDB with migration from localStorage
   useEffect(() => {
@@ -159,11 +284,25 @@ export default function App() {
     loadData();
   }, []);
 
-  // Auto-save articles to IndexedDB
+  // Auto-save articles to IndexedDB and Cloud Firestore if logged in
   useEffect(() => {
     if (!isLoadedRef.current) return;
     setStoredItem('casamadre_articles', articles);
-  }, [articles]);
+
+    if (currentUser?.uid) {
+      setSyncStatus('syncing');
+      const timer = setTimeout(async () => {
+        try {
+          await syncAllArticlesToFirestore(currentUser.uid, articles);
+          setSyncStatus('synced');
+        } catch (err) {
+          console.error('Auto-sync articles error:', err);
+          setSyncStatus('error');
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [articles, currentUser?.uid]);
 
   // Auto-save config
   useEffect(() => {
@@ -174,7 +313,18 @@ export default function App() {
     } catch {
       // ignore
     }
-  }, [config]);
+
+    if (currentUser?.uid) {
+      const timer = setTimeout(async () => {
+        try {
+          await syncConfigToFirestore(currentUser.uid, config);
+        } catch (err) {
+          console.error('Auto-sync config error:', err);
+        }
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [config, currentUser?.uid]);
 
   // Synchronize Dark Mode class with root document
   useEffect(() => {
@@ -426,12 +576,22 @@ export default function App() {
   // Delete article
   const handleDeleteArticle = (id: string) => {
     setArticles(articles.filter(a => a.id !== id));
+    if (currentUser?.uid) {
+      deleteArticleFromFirestore(currentUser.uid, id).catch(err => {
+        console.error('Error deleting from Firestore:', err);
+      });
+    }
     showToast('Article retiré de l\'inventaire');
   };
 
   // Save edited article
   const handleSaveArticle = (updated: ArticleItem) => {
     setArticles(articles.map(a => (a.id === updated.id ? updated : a)));
+    if (currentUser?.uid) {
+      syncArticleToFirestore(currentUser.uid, updated).catch(err => {
+        console.error('Error saving article to Firestore:', err);
+      });
+    }
     showToast(`Fiche "${updated.name}" mise à jour`);
   };
 
@@ -606,6 +766,12 @@ export default function App() {
         onToggleDarkMode={handleToggleDarkMode}
         isExporting={isExporting}
         exportStatus={exportStatus}
+        user={currentUser}
+        isAuthLoading={isAuthLoading}
+        syncStatus={syncStatus}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+        onManualSync={handleManualSync}
       />
 
       {/* Barre d'outils unifiée et strictement latérale (Dossiers à gauche, Options catalogue à droite sur une seule ligne) */}
