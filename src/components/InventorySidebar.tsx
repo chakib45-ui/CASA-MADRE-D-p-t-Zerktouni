@@ -98,35 +98,26 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
               </span>
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {onRepairLibrary && (
               <button
                 type="button"
                 onClick={onRepairLibrary}
                 title="Réparer la bibliothèque & synchroniser IndexedDB"
-                className="text-[11px] text-[#8c6239] dark:text-[#d4a373] hover:text-[#5c3e21] dark:hover:text-[#f3dfcc] flex items-center gap-1 transition-colors cursor-pointer font-medium"
+                className="px-2 py-1 bg-stone-100 dark:bg-[#2e231c] hover:bg-stone-200 dark:hover:bg-[#3d2f26] border border-stone-200 dark:border-[#4a392e] rounded text-[11px] text-[#8c6239] dark:text-[#d4a373] hover:text-[#5c3e21] dark:hover:text-[#f3dfcc] flex items-center gap-1 transition-colors cursor-pointer font-medium shadow-2xs"
               >
-                <Wrench className="w-3 h-3" />
-                Réparer
+                <Wrench className="w-3 h-3 text-[#8c6239] dark:text-[#c4a482]" />
+                <span className="hidden sm:inline">Réparer</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onResetToDefault}
-              title="Réinitialiser avec les exemples"
-              className="text-[11px] text-stone-500 dark:text-stone-400 hover:text-[#8c6239] dark:hover:text-[#d4a373] flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Modèles
-            </button>
             {onToggleSidebar && (
               <button
                 type="button"
                 onClick={onToggleSidebar}
                 title="Masquer la liste"
-                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-colors cursor-pointer ml-0.5"
+                className="p-1.5 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 rounded-md hover:bg-stone-200/70 dark:hover:bg-[#352820] border border-transparent hover:border-stone-300 dark:hover:border-[#4a392e] transition-colors cursor-pointer ml-0.5"
               >
-                <PanelLeftClose className="w-3.5 h-3.5" />
+                <PanelLeftClose className="w-4 h-4" />
               </button>
             )}
           </div>

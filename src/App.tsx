@@ -750,9 +750,10 @@ export default function App() {
 
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-[#f4f1eb] dark:bg-[#120d0a] transition-colors ${config.uiDarkMode ? 'dark' : ''}`}>
-      {/* Top Header */}
+      {/* Top Header Épuré avec Menu Outils & Actions centralisé */}
       <Header
         config={config}
+        onChangeConfig={setConfig}
         searchQuery={globalSearch}
         onSearchChange={setGlobalSearch}
         searchResultCount={isGlobalSearchActive ? displayedArticles.length : undefined}
@@ -774,7 +775,7 @@ export default function App() {
         onManualSync={handleManualSync}
       />
 
-      {/* Barre d'outils unifiée et strictement latérale (Dossiers à gauche, Options catalogue à droite sur une seule ligne) */}
+      {/* Barre de Gestion des Dossiers Simplifiée */}
       <FolderControlBar
         folders={folders}
         activeFolder={activeFolder}
@@ -785,8 +786,6 @@ export default function App() {
         onOpenNewFolder={() => setIsFolderCreateOpen(true)}
         onOpenEditFolder={() => setIsFolderEditOpen(true)}
         onBackFolder={handleBackFolder}
-        config={config}
-        onChangeConfig={setConfig}
         isSidebarVisible={isSidebarVisible}
         onToggleSidebar={() => setIsSidebarVisible(prev => !prev)}
       />
