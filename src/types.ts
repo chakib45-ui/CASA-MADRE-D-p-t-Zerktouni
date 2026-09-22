@@ -53,9 +53,24 @@ export interface CatalogConfig {
   uiDarkMode?: boolean;
 }
 
+export type UserRole = 'admin' | 'approved' | 'pending' | 'rejected';
+
 export interface UserProfile {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  role?: UserRole;
 }
+
+export interface UserApprovalRequest {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  status: UserRole;
+  requestedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+

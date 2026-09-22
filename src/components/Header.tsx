@@ -18,7 +18,10 @@ import {
   Plus,
   Layers,
   FileText,
-  Check
+  Check,
+  Users,
+  Lock,
+  Shield
 } from 'lucide-react';
 
 import { CatalogConfig, LayoutMode, ThemeId, UserProfile } from '../types';
@@ -47,6 +50,11 @@ interface HeaderProps {
   onSignIn?: () => void;
   onSignOut?: () => void;
   onManualSync?: () => void;
+  isAdmin?: boolean;
+  pendingApprovalsCount?: number;
+  onOpenUserManagement?: () => void;
+  isPinUnlocked?: boolean;
+  onLockEditing?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -71,6 +79,11 @@ export const Header: React.FC<HeaderProps> = ({
   onSignIn = () => {},
   onSignOut = () => {},
   onManualSync,
+  isAdmin = false,
+  pendingApprovalsCount = 0,
+  onOpenUserManagement,
+  isPinUnlocked = false,
+  onLockEditing,
 }) => {
   const safeConfig = config || DEFAULT_CONFIG;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -410,10 +423,67 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                   <span className="text-[10px] text-stone-400">Modifier ✏️</span>
                 </button>
+
+                {/* Section Admin Accès (si admin chakib.45@gmail.com) */}
+                {isAdmin && onOpenUserManagement && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenUserManagement();
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 mt-1 rounded-md bg-[#38281e] hover:bg-[#4a3629] text-left transition-colors cursor-pointer group border border-[#634937]"
+                    title="Gérer les approbations des utilisateurs et lecteurs"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-amber-300" />
+                      <span className="font-medium text-amber-100">Gestion des Accès</span>
+                    </span>
+                    {pendingApprovalsCount > 0 ? (
+                      <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-900 font-bold text-[10px] animate-pulse">
+                        {pendingApprovalsCount} en attente
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-300">Gérer 👥</span>
+                    )}
+                  </button>
+                )}
+
+                {/* Verrouiller PIN pour utilisateur lecteur */}
+                {!isAdmin && isPinUnlocked && onLockEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onLockEditing();
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 mt-1 rounded-md bg-[#2d211a] hover:bg-[#3d2c22] text-left transition-colors cursor-pointer group border border-[#4d382b]"
+                    title="Verrouiller à nouveau les modifications"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="font-medium text-amber-200">Reverrouiller modifications</span>
+                    </span>
+                    <span className="text-[10px] text-stone-400">Code 0045</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
         </div>
+
+        {/* Bouton rapide admin pour les demandes en attente */}
+        {isAdmin && pendingApprovalsCount > 0 && onOpenUserManagement && (
+          <button
+            type="button"
+            onClick={onOpenUserManagement}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-amber-600/90 hover:bg-amber-500 text-white font-bold text-xs rounded-md shadow-xs animate-pulse cursor-pointer border border-amber-400"
+            title={`${pendingApprovalsCount} demande(s) en attente de validation`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>{pendingApprovalsCount} en attente</span>
+          </button>
+        )}
 
         {/* Séparateur subtil */}
         <div className="w-px h-6 bg-[#3d3026] mx-0.5 hidden sm:block" />
@@ -426,6 +496,9 @@ export const Header: React.FC<HeaderProps> = ({
           onSignIn={onSignIn}
           onSignOut={onSignOut}
           onManualSync={onManualSync}
+          isAdmin={isAdmin}
+          onOpenUserManagement={onOpenUserManagement}
+          pendingApprovalsCount={pendingApprovalsCount}
         />
       </div>
     </header>

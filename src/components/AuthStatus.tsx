@@ -7,7 +7,9 @@ import {
   CloudCheck, 
   CloudOff, 
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -18,6 +20,9 @@ interface AuthStatusProps {
   onSignIn: () => void;
   onSignOut: () => void;
   onManualSync?: () => void;
+  isAdmin?: boolean;
+  onOpenUserManagement?: () => void;
+  pendingApprovalsCount?: number;
 }
 
 export const AuthStatus: React.FC<AuthStatusProps> = ({
@@ -26,9 +31,13 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
   syncStatus,
   onSignIn,
   onSignOut,
-  onManualSync
+  onManualSync,
+  isAdmin = false,
+  onOpenUserManagement,
+  pendingApprovalsCount = 0
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+
 
   if (isLoading) {
     return (
@@ -104,8 +113,8 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
         <button
           type="button"
           onClick={() => setShowDropdown(prev => !prev)}
-          className="flex items-center gap-2 px-2.5 py-1 text-xs text-[#faf6f0] bg-[#3a2e25] hover:bg-[#4d3d32] border border-[#5c4a3b] rounded transition-all cursor-pointer shadow-xs"
-          title={`Connecté en tant que ${user.displayName || user.email || 'Utilisateur'}`}
+          className="relative flex items-center gap-2 px-2.5 py-1 text-xs text-[#faf6f0] bg-[#3a2e25] hover:bg-[#4d3d32] border border-[#5c4a3b] rounded transition-all cursor-pointer shadow-xs"
+          title={`Connecté en tant que ${user.displayName || user.email || 'Utilisateur'}${isAdmin ? ' (Administrateur)' : ''}`}
         >
           {user.photoURL ? (
             <img 
@@ -122,6 +131,14 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
           <span className="max-w-[100px] truncate hidden md:inline font-medium">
             {user.displayName || user.email?.split('@')[0]}
           </span>
+          {isAdmin && pendingApprovalsCount > 0 && (
+            <span 
+              className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-[#17120e] font-bold text-[9px] rounded-full flex items-center justify-center shadow-md animate-bounce"
+              title={`${pendingApprovalsCount} demande(s) d'accès en attente`}
+            >
+              {pendingApprovalsCount}
+            </span>
+          )}
         </button>
 
         {/* Dropdown Menu */}
@@ -156,15 +173,50 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
               </div>
 
               <div className="text-[11px] text-stone-300 space-y-1 mb-3">
+                <div className="flex items-center justify-between text-stone-400">
+                  <span>Rôle :</span>
+                  {isAdmin ? (
+                    <span className="text-amber-300 font-bold flex items-center gap-1">
+                      👑 Administrateur
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-medium">
+                      📖 Lecteur Approuvé
+                    </span>
+                  )}
+                </div>
+                {!isAdmin && (
+                  <p className="text-[10px] text-stone-400 italic bg-[#1f1713] p-1.5 rounded border border-[#3d2e23]">
+                    🔒 Code <strong>0045</strong> requis pour modifier, importer ou supprimer des articles.
+                  </p>
+                )}
                 <p className="flex items-center justify-between text-stone-400">
-                  <span>Base de données :</span>
+                  <span>Base :</span>
                   <span className="text-amber-300 font-mono">Firestore Cloud</span>
                 </p>
-                <p className="flex items-center justify-between text-stone-400">
-                  <span>Statut :</span>
-                  <span className="text-emerald-400 font-semibold">Persistant multi-appareil</span>
-                </p>
               </div>
+
+              {/* Admin Accès Panel */}
+              {isAdmin && onOpenUserManagement && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenUserManagement();
+                    setShowDropdown(false);
+                  }}
+                  className="w-full mb-2 px-2.5 py-1.5 text-xs text-white bg-[#8c6239] hover:bg-[#734f2d] rounded border border-[#aa7a4a] flex items-center justify-between transition-colors cursor-pointer shadow-xs"
+                >
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <Users className="w-3.5 h-3.5 text-[#ffdca8]" />
+                    <span>Gestion des Accès</span>
+                  </span>
+                  {pendingApprovalsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-[#1e1713] font-bold text-[10px] animate-pulse">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {onManualSync && (
                 <button

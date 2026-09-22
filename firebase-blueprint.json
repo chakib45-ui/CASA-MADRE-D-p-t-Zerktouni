@@ -64,9 +64,29 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["userId"]
+    },
+    "user_approvals": {
+      "title": "UserApproval",
+      "description": "User access request and approval status (pending, approved, rejected)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "status": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "reviewedBy": { "type": "string" }
+      },
+      "required": ["uid", "email", "status"]
     }
   },
   "firestore": {
+    "/user_approvals/{userId}": {
+      "schema": "user_approvals",
+      "description": "Approval request and status for reader access"
+    },
     "/users/{userId}": {
       "schema": "users",
       "description": "User document storing authentication and account data"

@@ -8,7 +8,15 @@ import {
   deleteDoc,
   onSnapshot
 } from './firebase';
-import { ArticleItem, CatalogConfig } from '../types';
+import { ArticleItem, CatalogConfig, UserRole, UserApprovalRequest } from '../types';
+
+export const ADMIN_EMAIL = 'chakib.45@gmail.com';
+
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
 
 /**
  * Saves or updates a single article in Firestore for a given user.
@@ -247,3 +255,154 @@ export async function syncUserProfile(user: { uid: string; email?: string | null
     lastLoginAt: new Date().toISOString()
   }, { merge: true });
 }
+
+/**
+ * Checks or registers a user approval status.
+ * If user is chakib.45@gmail.com -> immediately 'admin'.
+ * Otherwise, creates or retrieves request in /user_approvals/{uid}.
+ */
+export async function checkOrCreateUserApproval(user: {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
+}): Promise<UserRole> {
+  if (!user?.uid) return 'pending';
+
+  // Admin bypass
+  if (isAdminEmail(user.email)) {
+    // Also ensure admin doc in approvals is marked admin
+    try {
+      const approvalRef = doc(db, 'user_approvals', user.uid);
+      await setDoc(approvalRef, {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || 'Administrateur',
+        photoURL: user.photoURL || '',
+        status: 'admin',
+        requestedAt: new Date().toISOString(),
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: 'system'
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not update admin approval record:', e);
+    }
+    return 'admin';
+  }
+
+  // Regular user: check /user_approvals/{uid}
+  const approvalRef = doc(db, 'user_approvals', user.uid);
+  try {
+    const snap = await getDoc(approvalRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const currentStatus = data.status as UserRole;
+      return currentStatus || 'pending';
+    } else {
+      // First time sign-in: create pending approval request
+      const newRequest: UserApprovalRequest = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || 'Utilisateur',
+        photoURL: user.photoURL || '',
+        status: 'pending',
+        requestedAt: new Date().toISOString()
+      };
+      await setDoc(approvalRef, newRequest);
+      return 'pending';
+    }
+  } catch (err) {
+    console.error('Error in checkOrCreateUserApproval:', err);
+    return 'pending';
+  }
+}
+
+/**
+ * Subscribes to real-time status changes for a specific user.
+ * Allows instant unlocking when admin clicks 'Approuver'.
+ */
+export function subscribeToUserApproval(
+  uid: string,
+  userEmail: string | null | undefined,
+  onUpdate: (status: UserRole) => void
+): () => void {
+  if (!uid) return () => {};
+  if (isAdminEmail(userEmail)) {
+    onUpdate('admin');
+    return () => {};
+  }
+
+  const approvalRef = doc(db, 'user_approvals', uid);
+  return onSnapshot(
+    approvalRef,
+    snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        onUpdate((data.status as UserRole) || 'pending');
+      } else {
+        onUpdate('pending');
+      }
+    },
+    err => {
+      console.warn('Approval snapshot error:', err);
+    }
+  );
+}
+
+/**
+ * Subscribes to all approval requests (for Admin dashboard).
+ */
+export function subscribeToAllApprovals(
+  onUpdate: (requests: UserApprovalRequest[]) => void
+): () => void {
+  const colRef = collection(db, 'user_approvals');
+  return onSnapshot(
+    colRef,
+    snap => {
+      const list: UserApprovalRequest[] = [];
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.uid) {
+          list.push({
+            uid: data.uid,
+            email: data.email || '',
+            displayName: data.displayName || '',
+            photoURL: data.photoURL || '',
+            status: (data.status as UserRole) || 'pending',
+            requestedAt: data.requestedAt || '',
+            reviewedAt: data.reviewedAt || '',
+            reviewedBy: data.reviewedBy || ''
+          });
+        }
+      });
+      // Sort newest requested first
+      list.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
+      onUpdate(list);
+    },
+    err => {
+      console.warn('subscribeToAllApprovals error:', err);
+    }
+  );
+}
+
+/**
+ * Admin action to approve or reject a user request.
+ */
+export async function updateUserApproval(
+  targetUid: string,
+  newStatus: UserRole,
+  adminEmail: string
+): Promise<void> {
+  if (!targetUid) return;
+  const approvalRef = doc(db, 'user_approvals', targetUid);
+  await setDoc(
+    approvalRef,
+    {
+      status: newStatus,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: adminEmail
+    },
+    { merge: true }
+  );
+}
+

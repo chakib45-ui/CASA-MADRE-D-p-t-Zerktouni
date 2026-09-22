@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
-import { ArticleItem, CatalogConfig, UserProfile } from './types';
+import { ArticleItem, CatalogConfig, UserProfile, UserRole, UserApprovalRequest } from './types';
 import { INITIAL_ARTICLES, DEFAULT_CONFIG } from './data/defaultCatalog';
 import { Header } from './components/Header';
 import { FolderControlBar } from './components/FolderControlBar';
@@ -16,6 +16,10 @@ import { HeaderSettingsModal } from './components/HeaderSettingsModal';
 import { PrintModal } from './components/PrintModal';
 import { ImageViewerModal } from './components/ImageViewerModal';
 import { CameraCaptureModal } from './components/CameraCaptureModal';
+import { LockScreen } from './components/LockScreen';
+import { PendingApprovalScreen } from './components/PendingApprovalScreen';
+import { PinModal } from './components/PinModal';
+import { UserManagementModal } from './components/UserManagementModal';
 import { exportCatalogToPDF, printCatalogViaBrowser } from './utils/pdfExport';
 import { exportCatalogToExcel } from './utils/excelExport';
 import { getStoredItem, setStoredItem, migrateFromLocalStorage, repairAndSyncLibrary } from './utils/storage';
@@ -33,8 +37,14 @@ import {
   deleteArticleFromFirestore, 
   syncConfigToFirestore, 
   fetchUserArticlesFromFirestore, 
-  fetchUserConfigFromFirestore 
+  fetchUserConfigFromFirestore,
+  checkOrCreateUserApproval,
+  subscribeToUserApproval,
+  subscribeToAllApprovals,
+  isAdminEmail,
+  ADMIN_EMAIL
 } from './lib/firestoreSync';
+
 
 export default function App() {
   const [articles, setArticles] = useState<ArticleItem[]>(INITIAL_ARTICLES);
@@ -47,6 +57,41 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('offline');
   const userRef = useRef<UserProfile | null>(null);
   userRef.current = currentUser;
+
+  // Roles & Security state
+  const [userRole, setUserRole] = useState<UserRole>('pending');
+  const [approvalRequests, setApprovalRequests] = useState<UserApprovalRequest[]>([]);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // PIN 0045 Security for modifications
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinActionTitle, setPinActionTitle] = useState('Modification du catalogue');
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [isPinUnlocked, setIsPinUnlocked] = useState(false);
+
+  const isAdmin = userRole === 'admin' || (currentUser?.email ? isAdminEmail(currentUser.email) : false);
+
+  const executeWithPinProtection = (action: () => void, title = 'Modification') => {
+    if (isAdmin || isPinUnlocked) {
+      action();
+    } else {
+      setPinActionTitle(title);
+      setPendingAction(() => action);
+      setIsPinModalOpen(true);
+    }
+  };
+
+  const handlePinSuccess = () => {
+    setIsPinUnlocked(true);
+    showToast('Code 0045 validé : Mode modification déverrouillé');
+    if (pendingAction) {
+      const act = pendingAction;
+      setPendingAction(null);
+      act();
+    }
+  };
 
   // Folder modals state
   const [isFolderCreateOpen, setIsFolderCreateOpen] = useState(false);
@@ -79,73 +124,124 @@ export default function App() {
 
   // Listen to Firebase Auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeApprovals: (() => void) | null = null;
+    let unsubscribeMyApproval: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setIsAuthLoading(true);
+      setAuthError(null);
+
+      if (unsubscribeApprovals) {
+        unsubscribeApprovals();
+        unsubscribeApprovals = null;
+      }
+      if (unsubscribeMyApproval) {
+        unsubscribeMyApproval();
+        unsubscribeMyApproval = null;
+      }
+
       if (user) {
+        const isUserAdmin = isAdminEmail(user.email);
         const profile: UserProfile = {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
-          photoURL: user.photoURL
+          photoURL: user.photoURL,
+          role: isUserAdmin ? 'admin' : 'pending'
         };
         setCurrentUser(profile);
         userRef.current = profile;
-        setSyncStatus('syncing');
 
         try {
-          // Record/update user doc
+          // Record/update user doc in Firestore
           await syncUserProfile(profile);
 
-          // Fetch remote articles and config
-          const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
-          const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
+          // Check or create approval request in Firestore
+          const role = await checkOrCreateUserApproval(profile);
+          setUserRole(role);
+          profile.role = role;
+          setCurrentUser({ ...profile });
 
-          if (remoteArticles && remoteArticles.length > 0) {
-            setArticles(remoteArticles);
-            await setStoredItem('casamadre_articles', remoteArticles);
-          } else {
-            // First time login for this user: sync current local articles to their Firestore
-            const localArticles = await getStoredItem<ArticleItem[]>('casamadre_articles') || articles;
-            if (localArticles && localArticles.length > 0) {
-              await syncAllArticlesToFirestore(user.uid, localArticles);
+          if (role === 'admin') {
+            // Admin: subscribe to all user approval requests for real-time dashboard
+            unsubscribeApprovals = subscribeToAllApprovals((reqs) => {
+              setApprovalRequests(reqs);
+            });
+          } else if (role === 'pending') {
+            // Pending reader: subscribe to own status update so screen unlocks automatically when admin approves
+            unsubscribeMyApproval = subscribeToUserApproval(user.uid, user.email, (newStatus) => {
+              setUserRole(newStatus);
+              setCurrentUser(prev => prev ? { ...prev, role: newStatus } : null);
+              if (newStatus === 'approved') {
+                showToast('Votre accès lecteur a été approuvé par l’administrateur !');
+              }
+            });
+          }
+
+          // Fetch remote articles and config if approved or admin
+          if (role === 'admin' || role === 'approved') {
+            setSyncStatus('syncing');
+            const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
+            const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
+
+            if (remoteArticles && remoteArticles.length > 0) {
+              setArticles(remoteArticles);
+              await setStoredItem('casamadre_articles', remoteArticles);
+            } else {
+              // Sync current local articles to Firestore
+              const localArticles = await getStoredItem<ArticleItem[]>('casamadre_articles') || articles;
+              if (localArticles && localArticles.length > 0) {
+                await syncAllArticlesToFirestore(user.uid, localArticles);
+              }
             }
-          }
 
-          if (remoteConfig) {
-            setConfig(remoteConfig);
-            await setStoredItem('casamadre_config', remoteConfig);
-          } else {
-            await syncConfigToFirestore(user.uid, config);
-          }
+            if (remoteConfig) {
+              setConfig(remoteConfig);
+              await setStoredItem('casamadre_config', remoteConfig);
+            } else {
+              await syncConfigToFirestore(user.uid, config);
+            }
 
-          setSyncStatus('synced');
-          showToast(`Connecté avec succès : ${user.displayName || user.email}`);
+            setSyncStatus('synced');
+            showToast(role === 'admin' 
+              ? `Bienvenue Administrateur : ${user.displayName || user.email}`
+              : `Bienvenue : ${user.displayName || user.email}`
+            );
+          }
         } catch (err: any) {
-          console.error('Error syncing with Firestore on login:', err);
+          console.error('Error on auth login sync:', err);
           setSyncStatus('error');
-          showToast('Synchronisation Cloud : utilisation du cache local');
         } finally {
           setIsAuthLoading(false);
         }
       } else {
         setCurrentUser(null);
         userRef.current = null;
+        setUserRole('pending');
+        setApprovalRequests([]);
+        setIsPinUnlocked(false);
         setSyncStatus('offline');
         setIsAuthLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeApprovals) unsubscribeApprovals();
+      if (unsubscribeMyApproval) unsubscribeMyApproval();
+    };
   }, []);
 
   // Google sign in / out handlers
   const handleSignIn = async () => {
     try {
       setIsAuthLoading(true);
+      setAuthError(null);
       await signInWithGoogle();
     } catch (err: any) {
       console.error('Google Sign In Error:', err);
       setIsAuthLoading(false);
+      setAuthError('Échec de connexion Google. Veuillez réessayer.');
       showToast('Échec de connexion Google. Veuillez réessayer.');
     }
   };
@@ -155,12 +251,36 @@ export default function App() {
       await signOutUser();
       setCurrentUser(null);
       userRef.current = null;
+      setUserRole('pending');
+      setIsPinUnlocked(false);
       setSyncStatus('offline');
       showToast('Déconnexion réussie');
     } catch (err) {
       console.error('Sign Out Error:', err);
     }
   };
+
+  const handleCheckApproval = async () => {
+    if (!currentUser?.uid) return;
+    try {
+      setIsCheckingApproval(true);
+      const role = await checkOrCreateUserApproval(currentUser);
+      setUserRole(role);
+      setCurrentUser(prev => prev ? { ...prev, role } : null);
+      if (role === 'approved') {
+        showToast('Votre accès lecteur est maintenant approuvé !');
+      } else if (role === 'pending') {
+        showToast('Demande toujours en attente de validation par l’administrateur.');
+      } else if (role === 'rejected') {
+        showToast('Votre demande a été refusée par l’administrateur.');
+      }
+    } catch (err) {
+      console.error('Error refreshing approval status:', err);
+    } finally {
+      setIsCheckingApproval(false);
+    }
+  };
+
 
   const handleManualSync = async () => {
     if (!currentUser) {
@@ -492,15 +612,19 @@ export default function App() {
         const imageFiles = extracted.filter(isImageFile);
 
         if (imageFiles.length > 0) {
-          setInitialFilesForBatch(imageFiles);
-          setIsBatchUploadOpen(true);
-          showToast(`${imageFiles.length} photo(s) détectée(s) — Prêtes pour l'import`);
+          executeWithPinProtection(() => {
+            setInitialFilesForBatch(imageFiles);
+            setIsBatchUploadOpen(true);
+            showToast(`${imageFiles.length} photo(s) détectée(s) — Prêtes pour l'import`);
+          }, "Import de photos");
         } else if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const fallbackImages = Array.from(e.dataTransfer.files).filter(isImageFile);
           if (fallbackImages.length > 0) {
-            setInitialFilesForBatch(fallbackImages);
-            setIsBatchUploadOpen(true);
-            showToast(`${fallbackImages.length} photo(s) détectée(s) — Prêtes pour l'import`);
+            executeWithPinProtection(() => {
+              setInitialFilesForBatch(fallbackImages);
+              setIsBatchUploadOpen(true);
+              showToast(`${fallbackImages.length} photo(s) détectée(s) — Prêtes pour l'import`);
+            }, "Import de photos");
           }
         }
       } catch (err) {
@@ -508,8 +632,10 @@ export default function App() {
         if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const fallbackImages = Array.from(e.dataTransfer.files).filter(isImageFile);
           if (fallbackImages.length > 0) {
-            setInitialFilesForBatch(fallbackImages);
-            setIsBatchUploadOpen(true);
+            executeWithPinProtection(() => {
+              setInitialFilesForBatch(fallbackImages);
+              setIsBatchUploadOpen(true);
+            }, "Import de photos");
           }
         }
       }
@@ -748,6 +874,42 @@ export default function App() {
   };
   const totalPages = Math.max(1, Math.ceil(displayedArticles.length / getItemsPerPage()));
 
+  // 1. Mandatory Login Gate: Lock Screen
+  if (!currentUser) {
+    return (
+      <LockScreen
+        onSignIn={handleSignIn}
+        isLoading={isAuthLoading}
+        errorMessage={authError}
+      />
+    );
+  }
+
+  // 2. Pending Approval Gate: Waiting for Admin validation
+  if (userRole === 'pending' && !isAdmin) {
+    return (
+      <PendingApprovalScreen
+        user={currentUser}
+        status="pending"
+        onSignOut={handleSignOut}
+        onRefresh={handleCheckApproval}
+        isRefreshing={isCheckingApproval}
+      />
+    );
+  }
+
+  // 3. Rejected Access Gate
+  if (userRole === 'rejected' && !isAdmin) {
+    return (
+      <PendingApprovalScreen
+        user={currentUser}
+        status="rejected"
+        onSignOut={handleSignOut}
+        onRefresh={handleCheckApproval}
+      />
+    );
+  }
+
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-[#f4f1eb] dark:bg-[#120d0a] transition-colors ${config.uiDarkMode ? 'dark' : ''}`}>
       {/* Top Header Épuré avec Menu Outils & Actions centralisé */}
@@ -761,8 +923,8 @@ export default function App() {
         onDownloadExcel={handleRequestDownloadExcel}
         onPrint={() => setIsPrintModalOpen(true)}
         onOpenHeaderSettings={() => setIsHeaderSettingsOpen(true)}
-        onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
-        onOpenScanner={() => setIsScannerOpen(true)}
+        onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+        onOpenScanner={() => executeWithPinProtection(() => setIsScannerOpen(true), "Scanner / Photo")}
         isDarkMode={!!config.uiDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
         isExporting={isExporting}
@@ -773,6 +935,14 @@ export default function App() {
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
         onManualSync={handleManualSync}
+        isAdmin={isAdmin}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        pendingApprovalsCount={approvalRequests.filter(r => r.status === 'pending').length}
+        isPinUnlocked={isPinUnlocked}
+        onLockEditing={() => {
+          setIsPinUnlocked(false);
+          showToast('Mode modification reverrouillé (Code 0045 requis)');
+        }}
       />
 
       {/* Barre de Gestion des Dossiers Simplifiée */}
@@ -783,8 +953,8 @@ export default function App() {
         globalSearch={globalSearch}
         onClearGlobalSearch={() => setGlobalSearch('')}
         onChangeFolder={handleSelectFolder}
-        onOpenNewFolder={() => setIsFolderCreateOpen(true)}
-        onOpenEditFolder={() => setIsFolderEditOpen(true)}
+        onOpenNewFolder={() => executeWithPinProtection(() => setIsFolderCreateOpen(true), "Créer un nouveau dossier")}
+        onOpenEditFolder={() => executeWithPinProtection(() => setIsFolderEditOpen(true), "Modifier le dossier")}
         onBackFolder={handleBackFolder}
         isSidebarVisible={isSidebarVisible}
         onToggleSidebar={() => setIsSidebarVisible(prev => !prev)}
@@ -799,18 +969,18 @@ export default function App() {
             folders={folders}
             activeFolder={activeFolder}
             onChangeFolder={handleSelectFolder}
-            onOpenNewFolder={() => setIsFolderCreateOpen(true)}
+            onOpenNewFolder={() => executeWithPinProtection(() => setIsFolderCreateOpen(true), "Créer un nouveau dossier")}
             globalSearch={globalSearch}
             onClearGlobalSearch={() => setGlobalSearch('')}
-            onSelectArticle={setEditingArticle}
+            onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
             onViewImage={setViewingImageArticle}
-            onMoveArticle={handleMoveArticle}
-            onDuplicateArticle={handleDuplicateArticle}
-            onDeleteArticle={handleDeleteArticle}
-            onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
-            onAddNewManual={handleAddNewManual}
-            onResetToDefault={handleResetToDefault}
-            onRepairLibrary={handleRepairLibrary}
+            onMoveArticle={(index, direction) => executeWithPinProtection(() => handleMoveArticle(index, direction), "Déplacer l'article")}
+            onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
+            onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
+            onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+            onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+            onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
+            onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
             onToggleSidebar={() => setIsSidebarVisible(false)}
           />
         )}
@@ -834,9 +1004,9 @@ export default function App() {
           config={config}
           globalSearch={globalSearch}
           onClearGlobalSearch={() => setGlobalSearch('')}
-          onOpenBatchUpload={() => setIsBatchUploadOpen(true)}
-          onAddNewManual={handleAddNewManual}
-          onSelectArticle={(article) => setEditingArticle(article)}
+          onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+          onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+          onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
           onViewImage={setViewingImageArticle}
           onOpenPrintModal={() => setIsPrintModalOpen(true)}
         />
@@ -885,7 +1055,7 @@ export default function App() {
         articles={displayedArticles}
         onSelectArticleForEdit={(article) => {
           setViewingImageArticle(null);
-          setEditingArticle(article);
+          executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article");
         }}
         onNavigateArticle={(article) => setViewingImageArticle(article)}
         config={config}
@@ -957,6 +1127,28 @@ export default function App() {
         onSave={setConfig}
         onRepairLibrary={handleRepairLibrary}
       />
+
+      {/* Secret PIN Modal (0045) for modifications */}
+      <PinModal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={handlePinSuccess}
+        actionTitle={pinActionTitle}
+      />
+
+      {/* Admin User Approvals Management Dashboard */}
+      {isAdmin && (
+        <UserManagementModal
+          isOpen={isUserManagementOpen}
+          onClose={() => setIsUserManagementOpen(false)}
+          requests={approvalRequests}
+          adminEmail={currentUser.email || ADMIN_EMAIL}
+          onSuccessToast={showToast}
+        />
+      )}
 
       {/* Floating Notification Toast */}
       {toastMessage && (

@@ -7,6 +7,9 @@ import {
   getRedirectResult, 
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   User
 } from 'firebase/auth';
 import { 
@@ -45,12 +48,14 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
+/**
+ * Connexion via Google Popup (avec fallback redirect en cas de blocage)
+ */
 export const signInWithGoogle = async (): Promise<User | null> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    // If popup was blocked or failed in iframe sandbox, attempt redirect
     if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
       try {
         await signInWithRedirect(auth, googleProvider);
@@ -65,13 +70,40 @@ export const signInWithGoogle = async (): Promise<User | null> => {
   }
 };
 
+/**
+ * Connexion par e-mail et mot de passe
+ */
+export const signInWithEmail = async (email: string, password: string): Promise<User> => {
+  const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+  return result.user;
+};
+
+/**
+ * Création de compte par e-mail et mot de passe
+ */
+export const signUpWithEmail = async (email: string, password: string): Promise<User> => {
+  const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  return result.user;
+};
+
+/**
+ * Réinitialisation du mot de passe par e-mail
+ */
+export const resetUserPassword = async (email: string): Promise<void> => {
+  await sendPasswordResetEmail(auth, email.trim());
+};
+
 export const signOutUser = async (): Promise<void> => {
   await firebaseSignOut(auth);
 };
 
 export {
+  app,
   onAuthStateChanged,
   getRedirectResult,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   collection,
   doc,
   setDoc,
@@ -81,3 +113,4 @@ export {
   onSnapshot
 };
 export type { User };
+
