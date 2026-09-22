@@ -1,8 +1,10 @@
 /**
- * Netlify Function: status-badge.js
+ * Netlify Function: status-badge.cjs
  * 
  * Générateur de Badge SVG Dynamique pour CASA MADRE - Dépôt Zerktouni.
  * Renvoie une image SVG vectorielle avec headers no-cache en temps réel.
+ * 
+ * Fichier CommonJS (.cjs) explicitement compatible avec "type": "module" dans package.json.
  * 
  * Usage : 
  * - https://votre-domaine.netlify.app/.netlify/functions/status-badge
