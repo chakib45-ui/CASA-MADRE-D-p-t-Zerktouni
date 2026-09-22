@@ -28,7 +28,8 @@ import {
   auth, 
   signInWithGoogle, 
   signOutUser, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  checkRedirectResult
 } from './lib/firebase';
 import { 
   syncUserProfile, 
@@ -122,6 +123,11 @@ export default function App() {
   const [exportStatus, setExportStatus] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Check redirect result on mount (for mobile Google Sign-In)
+  useEffect(() => {
+    checkRedirectResult().catch(err => console.warn('Redirect check error:', err));
+  }, []);
+
   // Listen to Firebase Auth state
   useEffect(() => {
     let unsubscribeApprovals: (() => void) | null = null;
@@ -145,9 +151,9 @@ export default function App() {
         const profile: UserProfile = {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName,
+          displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'Lecteur'),
           photoURL: user.photoURL,
-          role: isUserAdmin ? 'admin' : 'pending'
+          role: isUserAdmin ? 'admin' : 'approved'
         };
         setCurrentUser(profile);
         userRef.current = profile;
@@ -167,13 +173,13 @@ export default function App() {
             unsubscribeApprovals = subscribeToAllApprovals((reqs) => {
               setApprovalRequests(reqs);
             });
-          } else if (role === 'pending') {
-            // Pending reader: subscribe to own status update so screen unlocks automatically when admin approves
+          } else {
+            // Reader: subscribe to own status update so changes are reflected in real-time
             unsubscribeMyApproval = subscribeToUserApproval(user.uid, user.email, (newStatus) => {
               setUserRole(newStatus);
               setCurrentUser(prev => prev ? { ...prev, role: newStatus } : null);
-              if (newStatus === 'approved') {
-                showToast('Votre accès lecteur a été approuvé par l’administrateur !');
+              if (newStatus === 'rejected') {
+                showToast('Votre accès a été restreint par l’administrateur.');
               }
             });
           }
@@ -205,7 +211,7 @@ export default function App() {
             setSyncStatus('synced');
             showToast(role === 'admin' 
               ? `Bienvenue Administrateur : ${user.displayName || user.email}`
-              : `Bienvenue : ${user.displayName || user.email}`
+              : `Bienvenue : ${user.displayName || user.email || 'Lecteur'}`
             );
           }
         } catch (err: any) {

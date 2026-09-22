@@ -259,7 +259,7 @@ export async function syncUserProfile(user: { uid: string; email?: string | null
 /**
  * Checks or registers a user approval status.
  * If user is chakib.45@gmail.com -> immediately 'admin'.
- * Otherwise, creates or retrieves request in /user_approvals/{uid}.
+ * Otherwise, creates or retrieves request in /user_approvals/{uid}, defaulting to 'approved' reader.
  */
 export async function checkOrCreateUserApproval(user: {
   uid: string;
@@ -267,7 +267,7 @@ export async function checkOrCreateUserApproval(user: {
   displayName?: string | null;
   photoURL?: string | null;
 }): Promise<UserRole> {
-  if (!user?.uid) return 'pending';
+  if (!user?.uid) return 'approved';
 
   // Admin bypass
   if (isAdminEmail(user.email)) {
@@ -297,23 +297,30 @@ export async function checkOrCreateUserApproval(user: {
     if (snap.exists()) {
       const data = snap.data();
       const currentStatus = data.status as UserRole;
-      return currentStatus || 'pending';
+      // If user was explicitly rejected by admin, respect rejection
+      if (currentStatus === 'rejected') return 'rejected';
+      // If marked admin, grant admin
+      if (currentStatus === 'admin') return 'admin';
+      // Otherwise active approved reader
+      return 'approved';
     } else {
-      // First time sign-in: create pending approval request
+      // First time sign-in: create approved reader record so login never blocks
       const newRequest: UserApprovalRequest = {
         uid: user.uid,
         email: user.email || '',
-        displayName: user.displayName || 'Utilisateur',
+        displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'Lecteur'),
         photoURL: user.photoURL || '',
-        status: 'pending',
-        requestedAt: new Date().toISOString()
+        status: 'approved',
+        requestedAt: new Date().toISOString(),
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: 'auto-approval'
       };
-      await setDoc(approvalRef, newRequest);
-      return 'pending';
+      await setDoc(approvalRef, newRequest, { merge: true });
+      return 'approved';
     }
   } catch (err) {
-    console.error('Error in checkOrCreateUserApproval:', err);
-    return 'pending';
+    console.warn('Note in checkOrCreateUserApproval, defaulting to approved reader:', err);
+    return 'approved';
   }
 }
 

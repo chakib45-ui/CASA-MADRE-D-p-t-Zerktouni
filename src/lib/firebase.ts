@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  signInAnonymously,
   User
 } from 'firebase/auth';
 import { 
@@ -91,6 +92,27 @@ export const signUpWithEmail = async (email: string, password: string): Promise<
  */
 export const resetUserPassword = async (email: string): Promise<void> => {
   await sendPasswordResetEmail(auth, email.trim());
+};
+
+/**
+ * Connexion Invité / Démonstration (Lecture Seule)
+ */
+export const signInAsGuest = async (): Promise<User> => {
+  const result = await signInAnonymously(auth);
+  return result.user;
+};
+
+/**
+ * Vérification du résultat d'une redirection Google Auth
+ */
+export const checkRedirectResult = async (): Promise<User | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    return result ? result.user : null;
+  } catch (err) {
+    console.error('getRedirectResult error:', err);
+    return null;
+  }
 };
 
 export const signOutUser = async (): Promise<void> => {

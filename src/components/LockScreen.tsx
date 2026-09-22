@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail } from '../lib/firebase';
+import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight, UserCheck, Sparkles } from 'lucide-react';
+import { signInWithEmail, signUpWithEmail, resetUserPassword, signInAsGuest } from '../lib/firebase';
 
 interface LockScreenProps {
   onSignIn: () => void;
@@ -14,11 +14,36 @@ export const LockScreen: React.FC<LockScreenProps> = ({
   errorMessage,
 }) => {
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
+
+  const formatAuthError = (err: any): string => {
+    const code = err?.code || '';
+    if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+      return "Identifiants non reconnus. Si vous n'avez pas encore de compte, cliquez sur l'onglet 'Créer un compte'.";
+    }
+    if (code === 'auth/email-already-in-use') {
+      return "Cette adresse e-mail possède déjà un compte. Veuillez sélectionner l'onglet 'Se connecter'.";
+    }
+    if (code === 'auth/weak-password') {
+      return "Le mot de passe doit comporter au moins 6 caractères.";
+    }
+    if (code === 'auth/invalid-email') {
+      return "Veuillez renseigner une adresse e-mail valide.";
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      return "La fenêtre Google a été fermée avant la finalisation de la connexion.";
+    }
+    if (code === 'auth/network-request-failed') {
+      return "Erreur réseau. Veuillez vérifier votre connexion internet.";
+    }
+    return err?.message || "Une erreur est survenue lors de l'authentification.";
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,56 +52,80 @@ export const LockScreen: React.FC<LockScreenProps> = ({
       return;
     }
     setLocalError(null);
+    setResetSent(false);
     setEmailLoading(true);
     try {
-      if (isRegisterMode) {
+      if (authMode === 'register') {
         await signUpWithEmail(email, password);
       } else {
         await signInWithEmail(email, password);
       }
     } catch (err: any) {
       console.error('Erreur authentification email:', err);
-      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
-        setLocalError('Adresse e-mail ou mot de passe incorrect.');
-      } else if (err?.code === 'auth/email-already-in-use') {
-        setLocalError('Cet e-mail est déjà associé à un compte. Veuillez vous connecter.');
-      } else if (err?.code === 'auth/weak-password') {
-        setLocalError('Le mot de passe doit comporter au moins 6 caractères.');
-      } else {
-        setLocalError(err?.message || 'Erreur de connexion. Veuillez réessayer.');
-      }
+      setLocalError(formatAuthError(err));
     } finally {
       setEmailLoading(false);
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setLocalError("Renseignez d'abord votre adresse e-mail ci-dessus pour recevoir le lien de réinitialisation.");
+      return;
+    }
+    try {
+      setEmailLoading(true);
+      await resetUserPassword(email);
+      setResetSent(true);
+      setLocalError(null);
+    } catch (err: any) {
+      setLocalError("Impossible d'envoyer l'e-mail de réinitialisation. Vérifiez l'adresse saisie.");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleGuestAccess = async () => {
+    try {
+      setGuestLoading(true);
+      setLocalError(null);
+      await signInAsGuest();
+    } catch (err: any) {
+      console.error('Erreur accès invité:', err);
+      // Fallback: trigger general sign-in
+      onSignIn();
+    } finally {
+      setGuestLoading(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17120e] text-[#f7f5f0] p-4 select-none overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17120e] text-[#f7f5f0] p-4 select-none overflow-y-auto">
       {/* Texture de fond subtile */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#32251c]/70 via-[#1c1511] to-[#0f0b09] pointer-events-none" />
 
       {/* Cadre central luxueux et épuré */}
-      <div className="relative w-full max-w-md bg-[#241c17] border border-[#4d3d32] rounded-2xl p-8 sm:p-10 shadow-2xl text-center backdrop-blur-sm">
+      <div className="relative w-full max-w-md bg-[#241c17] border border-[#4d3d32] rounded-2xl p-7 sm:p-9 shadow-2xl text-center backdrop-blur-sm my-auto">
         
         {/* Logo Monogramme Casa Madre */}
-        <div className="mx-auto w-20 h-20 rounded-2xl bg-[#8c6239] text-[#faf6f0] flex items-center justify-center font-cinzel font-bold text-3xl shadow-xl border-2 border-[#a87f54] mb-6">
+        <div className="mx-auto w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-[#8c6239] text-[#faf6f0] flex items-center justify-center font-cinzel font-bold text-3xl shadow-xl border-2 border-[#a87f54] mb-5">
           CM
         </div>
 
         {/* Titre Institutionnel */}
-        <h1 className="font-cinzel text-2xl sm:text-3xl font-bold tracking-[0.16em] text-[#faf6f0] leading-tight mb-2">
+        <h1 className="font-cinzel text-2xl sm:text-3xl font-bold tracking-[0.16em] text-[#faf6f0] leading-tight mb-1.5">
           CASA MADRE
         </h1>
-        <div className="inline-block px-3 py-1 rounded bg-[#382b22] text-[#d6c5b2] font-mono text-xs uppercase tracking-widest border border-[#4d3d32] mb-5">
+        <div className="inline-block px-3 py-0.5 rounded bg-[#382b22] text-[#d6c5b2] font-mono text-xs uppercase tracking-widest border border-[#4d3d32] mb-4">
           Dépôt Zerktouni
         </div>
 
-        <p className="font-garamond italic text-[#c4b5a5] text-sm sm:text-base leading-relaxed mb-8 max-w-xs mx-auto">
+        <p className="font-garamond italic text-[#c4b5a5] text-sm sm:text-base leading-relaxed mb-6 max-w-xs mx-auto">
           Inventaire d'Antiquités & Catalogue Interactif réservé aux membres autorisés
         </p>
 
         {/* Séparateur élégant */}
-        <div className="flex items-center justify-center gap-3 mb-8">
+        <div className="flex items-center justify-center gap-3 mb-6">
           <div className="w-12 h-px bg-[#4d3d32]" />
           <Lock className="w-4 h-4 text-[#c4a482]" />
           <div className="w-12 h-px bg-[#4d3d32]" />
@@ -84,8 +133,15 @@ export const LockScreen: React.FC<LockScreenProps> = ({
 
         {/* Message d'erreur éventuel */}
         {(errorMessage || localError) && (
-          <div className="mb-6 p-3 bg-red-950/60 border border-red-800/80 rounded-lg text-red-200 text-xs text-left">
+          <div className="mb-5 p-3 bg-red-950/70 border border-red-800/80 rounded-lg text-red-200 text-xs text-left leading-relaxed">
             ⚠️ {errorMessage || localError}
+          </div>
+        )}
+
+        {/* Message de succès réinitialisation */}
+        {resetSent && (
+          <div className="mb-5 p-3 bg-emerald-950/70 border border-emerald-800/80 rounded-lg text-emerald-200 text-xs text-left">
+            ✓ E-mail de réinitialisation envoyé à {email}. Consultez votre boîte de réception.
           </div>
         )}
 
@@ -93,7 +149,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
         <button
           type="button"
           onClick={onSignIn}
-          disabled={isLoading || emailLoading}
+          disabled={isLoading || emailLoading || guestLoading}
           className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-[#8c6239] to-[#734f2d] hover:from-[#9c6f42] hover:to-[#835c36] text-white font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl border border-[#b88c5f]/50 flex items-center justify-center gap-3 transition-all cursor-pointer transform active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed group"
           title="Se connecter avec votre compte Google"
         >
@@ -121,27 +177,51 @@ export const LockScreen: React.FC<LockScreenProps> = ({
         {/* Alternative Email/Mot de passe */}
         <div className="mt-4">
           {!showEmailForm ? (
-            <button
-              type="button"
-              onClick={() => setShowEmailForm(true)}
-              className="text-xs text-[#bda795] hover:text-[#e8ded5] transition-colors underline cursor-pointer"
-            >
-              Ou se connecter avec e-mail et mot de passe
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setShowEmailForm(true)}
+                className="text-xs text-[#c4b5a5] hover:text-[#f5ede3] transition-colors underline cursor-pointer"
+              >
+                Connexion ou Inscription avec E-mail & Mot de passe
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleGuestAccess}
+                disabled={guestLoading || isLoading}
+                className="mt-1 text-xs text-[#a38b77] hover:text-[#d4c3b3] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Consulter le catalogue en mode Démo / Lecteur sans compte"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Accès direct en Lecture Seule (Mode Démo)</span>
+              </button>
+            </div>
           ) : (
-            <form onSubmit={handleEmailSubmit} className="mt-4 p-4 bg-[#1b1410] border border-[#3d2e23] rounded-xl text-left animate-fade-in">
-              <div className="text-xs font-semibold text-[#f5ede3] mb-3 flex items-center justify-between">
-                <span>{isRegisterMode ? 'Créer un compte par e-mail' : 'Connexion par e-mail'}</span>
+            <div className="mt-4 p-4 bg-[#1b1410] border border-[#3d2e23] rounded-xl text-left animate-fade-in">
+              {/* Onglets Se connecter / Créer un compte */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-[#251b15] rounded-lg mb-3 border border-[#423226]">
                 <button
                   type="button"
-                  onClick={() => setIsRegisterMode(!isRegisterMode)}
-                  className="text-[11px] text-[#c4a482] hover:underline"
+                  onClick={() => { setAuthMode('login'); setLocalError(null); }}
+                  className={`py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer text-center ${
+                    authMode === 'login' ? 'bg-[#8c6239] text-white shadow-xs' : 'text-[#a38f7f] hover:text-white'
+                  }`}
                 >
-                  {isRegisterMode ? 'Déjà un compte ?' : 'Nouveau ? Créer un compte'}
+                  Se connecter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('register'); setLocalError(null); }}
+                  className={`py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer text-center ${
+                    authMode === 'register' ? 'bg-[#8c6239] text-white shadow-xs' : 'text-[#a38f7f] hover:text-white'
+                  }`}
+                >
+                  Créer un compte
                 </button>
               </div>
 
-              <div className="space-y-2.5">
+              <form onSubmit={handleEmailSubmit} className="space-y-3">
                 <div>
                   <label className="block text-[11px] text-[#c4b5a5] mb-1">Adresse E-mail</label>
                   <div className="relative">
@@ -158,27 +238,38 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-[#c4b5a5] mb-1">Mot de passe</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] text-[#c4b5a5]">Mot de passe</label>
+                    {authMode === 'login' && (
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-[10px] text-[#c4a482] hover:underline cursor-pointer"
+                      >
+                        Mot de passe oublié ?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <KeyRound className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#8c6239]" />
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
+                      placeholder={authMode === 'register' ? '6 caractères minimum' : '••••••••'}
                       className="w-full pl-9 pr-3 py-1.5 text-xs rounded bg-[#241c17] border border-[#4d3d32] text-white focus:outline-none focus:border-[#8c6239]"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-1">
                   <button
                     type="submit"
                     disabled={emailLoading}
                     className="flex-1 py-2 px-3 bg-[#8c6239] hover:bg-[#a07244] text-white rounded text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    {emailLoading ? 'Traitement...' : isRegisterMode ? "Créer l'accès" : 'Valider'}
+                    {emailLoading ? 'Traitement...' : authMode === 'register' ? "Créer mon compte" : 'Connexion'}
                     {!emailLoading && <ArrowRight className="w-3 h-3" />}
                   </button>
                   <button
@@ -189,19 +280,20 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                     Fermer
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           )}
         </div>
 
         {/* Note de sécurité */}
         <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-[#9e8b7b]">
           <ShieldCheck className="w-3.5 h-3.5 text-[#c4a482]" />
-          <span>Accès sécurisé par Firebase Auth & Contrôle d'accès</span>
+          <span>Accès sécurisé par Firebase Auth & Contrôle de permissions</span>
         </div>
 
       </div>
     </div>
   );
 };
+
 
