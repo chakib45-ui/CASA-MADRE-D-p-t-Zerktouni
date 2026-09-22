@@ -287,6 +287,24 @@ export const Header: React.FC<HeaderProps> = ({
                       .xlsx
                     </span>
                   </button>
+
+                  {/* Badge SVG Dynamique GitHub / Web */}
+                  <a
+                    href="/api/status-badge"
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-[#382b22] text-left transition-colors cursor-pointer group"
+                    title="Ouvrir le badge SVG dynamique temps réel pour README GitHub ou site web"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 flex items-center justify-center font-bold text-[10px] text-amber-300">🛡️</span>
+                      <span className="font-medium text-[#f5ede3]">Badge SVG Statut Stock</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 border border-blue-500/40 text-blue-200">
+                      SVG
+                    </span>
+                  </a>
                 </div>
               </div>
 

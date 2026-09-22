@@ -116,6 +116,74 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Dynamic SVG Status Badge endpoint for CASA MADRE - Dépôt Zerktouni
+// Accessible via /api/status-badge?count=40&expected=40
+app.get('/api/status-badge', (req, res) => {
+  const queryCount = req.query.count !== undefined ? parseInt(String(req.query.count), 10) : 40;
+  const expected = req.query.expected !== undefined ? parseInt(String(req.query.expected), 10) : 40;
+  const folder = String(req.query.folder || 'Antiquités');
+
+  const isComplete = !isNaN(queryCount) && queryCount >= expected;
+  const isPartial = !isNaN(queryCount) && queryCount > 0 && queryCount < expected;
+
+  const leftText = 'CASA MADRE';
+  let rightText = '';
+  let rightColor = '#2da44e'; // Vert émeraude
+
+  if (isComplete) {
+    rightText = `${queryCount} Articles - Stock OK`;
+    rightColor = '#2da44e';
+  } else if (isPartial) {
+    rightText = `${queryCount}/${expected} - Incomplet`;
+    rightColor = '#df6828'; // Orange ambré
+  } else {
+    rightText = 'Incomplet';
+    rightColor = '#cf222e'; // Rouge
+  }
+
+  const leftWidth = 98;
+  const rightWidth = Math.max(120, Math.round(rightText.length * 7.6 + 22));
+  const totalWidth = leftWidth + rightWidth;
+  const height = 24;
+
+  const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${height}" viewBox="0 0 ${totalWidth} ${height}" role="img" aria-label="${leftText}: ${rightText}">
+  <title>${leftText}: ${rightText}</title>
+  <linearGradient id="overlay" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="rounded">
+    <rect width="${totalWidth}" height="${height}" rx="5" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#rounded)">
+    <!-- Fond gauche (Élégance Maison Zerktouni) -->
+    <rect width="${leftWidth}" height="${height}" fill="#2e231c"/>
+    <!-- Fond droit (Statut vert / orange / rouge) -->
+    <rect x="${leftWidth}" width="${rightWidth}" height="${height}" fill="${rightColor}"/>
+    <rect width="${totalWidth}" height="${height}" fill="url(#overlay)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="11">
+    <!-- Libellé Gauche -->
+    <text x="${leftWidth / 2}" y="16" fill="#010101" fill-opacity=".3">${leftText}</text>
+    <text x="${leftWidth / 2}" y="15" fill="#f5ede3">${leftText}</text>
+    <!-- Libellé Droite -->
+    <text x="${leftWidth + rightWidth / 2}" y="16" fill="#010101" fill-opacity=".3">${rightText}</text>
+    <text x="${leftWidth + rightWidth / 2}" y="15" fill="#ffffff">${rightText}</text>
+  </g>
+</svg>`;
+
+  // En-tête obligatoire pour servir du SVG
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  // Désactivation stricte du cache pour rafraîchissement temps réel
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  return res.status(200).send(svgContent);
+});
+
 // Full article analysis with Gemini AI for ArticleEditorModal
 // Analyzes image to automatically populate material, period, dimensions, description, etc.
 app.post('/api/gemini/analyze-article', async (req, res) => {

@@ -1,0 +1,8 @@
+[build]
+  functions = "netlify/functions"
+  publish = "dist"
+
+[[redirects]]
+  from = "/api/status-badge"
+  to = "/.netlify/functions/status-badge"
+  status = 200
