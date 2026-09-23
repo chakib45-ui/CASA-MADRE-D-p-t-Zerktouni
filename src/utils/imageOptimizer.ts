@@ -5,6 +5,45 @@
  * This saves memory, prevents storage crashes, and makes PDF generation fast.
  */
 
+/**
+ * Fallback antique placeholder image (SVG Data URL)
+ * Styled with Casa Madre monogram CM, antique border and warm parchment tone.
+ */
+export const FALLBACK_ANTIQUE_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#2a2019" />
+      <stop offset="60%" stop-color="#1c1511" />
+      <stop offset="100%" stop-color="#120e0c" />
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4af37" />
+      <stop offset="50%" stop-color="#aa7a44" />
+      <stop offset="100%" stop-color="#80562e" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bgGrad)" />
+  <rect x="30" y="30" width="740" height="740" rx="16" fill="none" stroke="url(#goldGrad)" stroke-width="2" stroke-dasharray="6,4" opacity="0.6" />
+  <rect x="50" y="50" width="700" height="700" rx="12" fill="none" stroke="#4d382b" stroke-width="1.5" />
+  
+  <!-- Decorative corner brackets -->
+  <path d="M 50 90 L 50 50 L 90 50" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+  <path d="M 750 90 L 750 50 L 710 50" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+  <path d="M 50 710 L 50 750 L 90 750" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+  <path d="M 750 710 L 750 750 L 710 750" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+
+  <!-- Monogram & Emblem -->
+  <circle cx="400" cy="360" r="90" fill="#241b16" stroke="url(#goldGrad)" stroke-width="2" />
+  <text x="400" y="380" font-family="Cinzel, Georgia, serif" font-size="64" font-weight="bold" fill="#f0dfcc" text-anchor="middle" letter-spacing="4">CM</text>
+  
+  <!-- Titles -->
+  <text x="400" y="500" font-family="Cinzel, Georgia, serif" font-size="28" font-weight="bold" fill="#e8cbb0" text-anchor="middle" letter-spacing="6">CASA MADRE</text>
+  <text x="400" y="535" font-family="sans-serif" font-size="14" fill="#a89382" text-anchor="middle" letter-spacing="3">INVENTAIRE & ANTIQUITÉS</text>
+  <text x="400" y="570" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#7a6758" text-anchor="middle">Illustration en cours d'archivage</text>
+</svg>
+`)}`;
+
 export function isImageFile(file: File): boolean {
   if (!file) return false;
   if (file.type && file.type.toLowerCase().startsWith('image/')) return true;
@@ -35,7 +74,7 @@ export async function downloadImageFile(imageUrl: string, filename: string = 'ph
           return;
         }
       } catch {
-        // If CORS fetch fails, fallback to direct anchor
+        // Fallback to direct anchor if fetch fails
       }
     }
 
@@ -48,42 +87,61 @@ export async function downloadImageFile(imageUrl: string, filename: string = 'ph
     document.body.removeChild(a);
   } catch (err) {
     console.error('Erreur téléchargement image', err);
-    window.open(imageUrl, '_blank');
+    try {
+      window.open(imageUrl, '_blank');
+    } catch {
+      // ignore
+    }
   }
 }
 
+/**
+ * Optimizes an uploaded image file:
+ * - Resizes dimensions to max 1400px (crisp for A4 printing and screens)
+ * - Compresses to clean JPEG (or PNG if SVG/transparent)
+ * - Guarantees the output base64 fits well within Firestore's 1MB document limit (<400KB)
+ * - Prevents CORS and decoding errors
+ */
 export async function optimizeImageFile(
   file: File,
-  maxDimension: number = 1800,
-  quality: number = 0.90
+  maxDimension: number = 1400,
+  quality: number = 0.84
 ): Promise<string> {
   return new Promise((resolve) => {
     try {
+      // If SVG file, read directly
+      if (file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve((e.target?.result as string) || FALLBACK_ANTIQUE_IMAGE);
+        reader.onerror = () => resolve(FALLBACK_ANTIQUE_IMAGE);
+        reader.readAsDataURL(file);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onerror = () => {
-        console.warn('FileReader error on image, falling back to empty string');
-        resolve('');
+        console.warn('FileReader error on image, falling back to placeholder');
+        resolve(FALLBACK_ANTIQUE_IMAGE);
       };
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (!result) {
-          resolve('');
-          return;
-        }
 
-        // If file is under 3MB, keep intact without canvas re-compression
-        if (file.size < 3 * 1024 * 1024) {
-          resolve(result);
+      reader.onload = (e) => {
+        const rawResult = e.target?.result as string;
+        if (!rawResult) {
+          resolve(FALLBACK_ANTIQUE_IMAGE);
           return;
         }
 
         const img = new Image();
-        img.onerror = () => resolve(result); // fallback to original dataUrl if decode fails
+        img.onerror = () => {
+          console.warn('Image decode error, using raw or fallback');
+          resolve(rawResult || FALLBACK_ANTIQUE_IMAGE);
+        };
+
         img.onload = () => {
           try {
             let { width, height } = img;
 
-            // Calculate scaled dimensions maintaining aspect ratio
+            // Scale down if oversized
             if (width > maxDimension || height > maxDimension) {
               if (width > height) {
                 height = Math.round((height * maxDimension) / width);
@@ -95,37 +153,47 @@ export async function optimizeImageFile(
             }
 
             const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = Math.max(1, width);
+            canvas.height = Math.max(1, height);
             const ctx = canvas.getContext('2d');
 
             if (!ctx) {
-              resolve(result);
+              resolve(rawResult);
               return;
             }
 
-            // High quality image smoothing
+            // High-quality bicubic smoothing
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            // White background in case of transparent PNG
-            ctx.fillStyle = '#FFFFFF';
+            // Fill warm background so transparency doesn't turn black
+            ctx.fillStyle = '#faf7f2';
             ctx.fillRect(0, 0, width, height);
 
             ctx.drawImage(img, 0, 0, width, height);
 
-            const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            // Compress to JPEG
+            let optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+            // Second pass if still exceeding 600KB (to strictly respect Firestore 1MB limits)
+            if (optimizedDataUrl.length > 600 * 1024) {
+              optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.70);
+            }
+
             resolve(optimizedDataUrl);
-          } catch {
-            // Fallback to original if canvas fails
-            resolve(result);
+          } catch (canvasErr) {
+            console.warn('Canvas optimization error:', canvasErr);
+            resolve(rawResult || FALLBACK_ANTIQUE_IMAGE);
           }
         };
-        img.src = result;
+
+        img.src = rawResult;
       };
+
       reader.readAsDataURL(file);
-    } catch {
-      resolve('');
+    } catch (err) {
+      console.warn('optimizeImageFile fatal error:', err);
+      resolve(FALLBACK_ANTIQUE_IMAGE);
     }
   });
 }

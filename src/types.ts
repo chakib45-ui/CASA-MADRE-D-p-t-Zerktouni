@@ -72,5 +72,24 @@ export interface UserApprovalRequest {
   requestedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
+  lastLoginAt?: string;
+  loginCount?: number;
+}
+
+export interface AccessLogEntry {
+  id: string;
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  action: 'login' | 'approval_change' | 'pin_unlock' | 'pin_change' | 'logout' | 'demo_access';
+  details?: string;
+  timestamp: string;
+}
+
+export interface SecurityConfig {
+  pinCode: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 

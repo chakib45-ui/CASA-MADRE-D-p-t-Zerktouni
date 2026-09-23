@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
-import { ArticleItem, CatalogConfig, UserProfile, UserRole, UserApprovalRequest } from './types';
+import { ArticleItem, CatalogConfig, UserProfile, UserRole, UserApprovalRequest, AccessLogEntry } from './types';
 import { INITIAL_ARTICLES, DEFAULT_CONFIG } from './data/defaultCatalog';
 import { Header } from './components/Header';
 import { FolderControlBar } from './components/FolderControlBar';
@@ -42,8 +42,13 @@ import {
   checkOrCreateUserApproval,
   subscribeToUserApproval,
   subscribeToAllApprovals,
+  subscribeToSecurityPin,
+  updateSecurityPin,
+  subscribeToAccessLogs,
+  logAccessEvent,
   isAdminEmail,
-  ADMIN_EMAIL
+  ADMIN_EMAIL,
+  DEFAULT_PIN
 } from './lib/firestoreSync';
 
 
@@ -62,11 +67,13 @@ export default function App() {
   // Roles & Security state
   const [userRole, setUserRole] = useState<UserRole>('pending');
   const [approvalRequests, setApprovalRequests] = useState<UserApprovalRequest[]>([]);
+  const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isCheckingApproval, setIsCheckingApproval] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // PIN 0045 Security for modifications
+  // Dynamic PIN Security for modifications
+  const [activePinCode, setActivePinCode] = useState<string>(DEFAULT_PIN);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinActionTitle, setPinActionTitle] = useState('Modification du catalogue');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -86,7 +93,17 @@ export default function App() {
 
   const handlePinSuccess = () => {
     setIsPinUnlocked(true);
-    showToast('Code 0045 validé : Mode modification déverrouillé');
+    showToast("Code d'autorisation validé : Mode modification déverrouillé");
+    if (currentUser) {
+      logAccessEvent({
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName,
+        role: userRole,
+        action: 'pin_unlock',
+        details: `Déverrouillage des modifications avec code PIN`
+      });
+    }
     if (pendingAction) {
       const act = pendingAction;
       setPendingAction(null);
@@ -128,10 +145,19 @@ export default function App() {
     checkRedirectResult().catch(err => console.warn('Redirect check error:', err));
   }, []);
 
+  // Real-time synchronization of authorization PIN
+  useEffect(() => {
+    const unsubPin = subscribeToSecurityPin((pin) => {
+      setActivePinCode(pin);
+    });
+    return () => unsubPin();
+  }, []);
+
   // Listen to Firebase Auth state
   useEffect(() => {
     let unsubscribeApprovals: (() => void) | null = null;
     let unsubscribeMyApproval: (() => void) | null = null;
+    let unsubscribeLogs: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setIsAuthLoading(true);
@@ -144,6 +170,10 @@ export default function App() {
       if (unsubscribeMyApproval) {
         unsubscribeMyApproval();
         unsubscribeMyApproval = null;
+      }
+      if (unsubscribeLogs) {
+        unsubscribeLogs();
+        unsubscribeLogs = null;
       }
 
       if (user) {
@@ -167,6 +197,21 @@ export default function App() {
           setUserRole(role);
           profile.role = role;
           setCurrentUser({ ...profile });
+
+          // Log access event
+          await logAccessEvent({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: role,
+            action: 'login',
+            details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
+          });
+
+          // Subscribe to access logs
+          unsubscribeLogs = subscribeToAccessLogs((logs) => {
+            setAccessLogs(logs);
+          });
 
           if (role === 'admin') {
             // Admin: subscribe to all user approval requests for real-time dashboard
@@ -235,6 +280,7 @@ export default function App() {
       unsubscribeAuth();
       if (unsubscribeApprovals) unsubscribeApprovals();
       if (unsubscribeMyApproval) unsubscribeMyApproval();
+      if (unsubscribeLogs) unsubscribeLogs();
     };
   }, []);
 
@@ -947,7 +993,7 @@ export default function App() {
         isPinUnlocked={isPinUnlocked}
         onLockEditing={() => {
           setIsPinUnlocked(false);
-          showToast('Mode modification reverrouillé (Code 0045 requis)');
+          showToast('Mode modification reverrouillé (Code PIN requis)');
         }}
       />
 
@@ -1134,7 +1180,7 @@ export default function App() {
         onRepairLibrary={handleRepairLibrary}
       />
 
-      {/* Secret PIN Modal (0045) for modifications */}
+      {/* Authorization PIN Modal for modifications */}
       <PinModal
         isOpen={isPinModalOpen}
         onClose={() => {
@@ -1143,16 +1189,20 @@ export default function App() {
         }}
         onSuccess={handlePinSuccess}
         actionTitle={pinActionTitle}
+        expectedPin={activePinCode}
       />
 
-      {/* Admin User Approvals Management Dashboard */}
+      {/* Admin User Approvals Management & Security Dashboard */}
       {isAdmin && (
         <UserManagementModal
           isOpen={isUserManagementOpen}
           onClose={() => setIsUserManagementOpen(false)}
           requests={approvalRequests}
-          adminEmail={currentUser.email || ADMIN_EMAIL}
+          adminEmail={currentUser?.email || ADMIN_EMAIL}
           onSuccessToast={showToast}
+          accessLogs={accessLogs}
+          currentPin={activePinCode}
+          onUpdatePin={async (newPin) => updateSecurityPin(newPin, currentUser?.email || ADMIN_EMAIL)}
         />
       )}
 

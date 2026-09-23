@@ -464,7 +464,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <Lock className="w-3.5 h-3.5 text-amber-400" />
                       <span className="font-medium text-amber-200">Reverrouiller modifications</span>
                     </span>
-                    <span className="text-[10px] text-stone-400">Code 0045</span>
+                    <span className="text-[10px] text-stone-400">🔒 Protégé</span>
                   </button>
                 )}
               </div>

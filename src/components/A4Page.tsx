@@ -2,7 +2,7 @@ import React from 'react';
 import { ArticleItem, CatalogConfig, ColorTheme } from '../types';
 import { DEFAULT_CONFIG } from '../data/defaultCatalog';
 import { Edit3, ZoomIn, Maximize2, Download } from 'lucide-react';
-import { downloadImageFile } from '../utils/imageOptimizer';
+import { downloadImageFile, FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
 
 function getCleanArticleName(name: string): string {
   if (!name || /whatsapp\s*image/i.test(name) || name.includes('23.15.51')) {
@@ -293,13 +293,18 @@ const ArticleCardTwoPerPage: React.FC<{
       >
         {config.cleanScanEffect !== false && <ScanCornerMarks accentColor={theme.accentColor} />}
         <img
-          src={article.imageUrl}
+          src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
           alt={article.name}
           className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover/photo:scale-[1.03]"
           style={getScanImageStyle(config)}
           loading="eager"
-          crossOrigin="anonymous"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+              target.src = FALLBACK_ANTIQUE_IMAGE;
+            }
+          }}
         />
         {/* Subtle zoom badge on hover */}
         <div className="no-print absolute inset-0 bg-black/25 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-medium backdrop-blur-[0.5px]">
@@ -506,13 +511,18 @@ const ArticleCardOnePerPage: React.FC<{
       >
         {config.cleanScanEffect !== false && <ScanCornerMarks accentColor={theme.accentColor} />}
         <img
-          src={article.imageUrl}
+          src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
           alt={article.name}
           className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover/photo:scale-[1.03]"
           style={getScanImageStyle(config)}
           loading="eager"
-          crossOrigin="anonymous"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+              target.src = FALLBACK_ANTIQUE_IMAGE;
+            }
+          }}
         />
         <div
           className="absolute top-3 left-3 px-3 py-1 text-[11px] font-semibold tracking-wider rounded uppercase shadow"
@@ -731,13 +741,18 @@ const ArticleCardFourPerPage: React.FC<{
       >
         {config.cleanScanEffect !== false && <ScanCornerMarks accentColor={theme.accentColor} />}
         <img
-          src={article.imageUrl}
+          src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
           alt={article.name}
           className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover/photo:scale-[1.03]"
           style={getScanImageStyle(config)}
           loading="eager"
-          crossOrigin="anonymous"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+              target.src = FALLBACK_ANTIQUE_IMAGE;
+            }
+          }}
         />
         <div
           className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[8.5px] font-bold tracking-wider rounded uppercase shadow-xs"
@@ -898,13 +913,18 @@ const ArticleCardThreeHorizontal: React.FC<{
       >
         {config.cleanScanEffect !== false && <ScanCornerMarks accentColor={theme.accentColor} />}
         <img
-          src={article.imageUrl}
+          src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
           alt={article.name}
           className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover/photo:scale-[1.03]"
           style={getScanImageStyle(config)}
           loading="eager"
-          crossOrigin="anonymous"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+              target.src = FALLBACK_ANTIQUE_IMAGE;
+            }
+          }}
         />
         <div
           className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[8.5px] font-bold rounded uppercase shadow-xs"

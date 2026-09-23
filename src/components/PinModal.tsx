@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { KeyRound, X, Check, ShieldAlert, Lock } from 'lucide-react';
+import { KeyRound, X, Check, ShieldAlert, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   actionTitle?: string;
+  expectedPin?: string;
 }
 
 export const PinModal: React.FC<PinModalProps> = ({
@@ -13,15 +14,20 @@ export const PinModal: React.FC<PinModalProps> = ({
   onClose,
   onSuccess,
   actionTitle = 'Modification du catalogue',
+  expectedPin = '0045',
 }) => {
   const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const targetPin = (expectedPin || '0045').trim();
 
   useEffect(() => {
     if (isOpen) {
       setPin('');
       setError(null);
+      setShowPin(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
@@ -30,7 +36,7 @@ export const PinModal: React.FC<PinModalProps> = ({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (pin.trim() === '0045') {
+    if (pin.trim() === targetPin) {
       setError(null);
       onSuccess();
       onClose();
@@ -42,14 +48,14 @@ export const PinModal: React.FC<PinModalProps> = ({
   };
 
   const handleDigitClick = (digit: string) => {
-    if (pin.length < 6) {
+    if (pin.length < 8) {
       const nextPin = pin + digit;
       setPin(nextPin);
       setError(null);
-      if (nextPin === '0045') {
+      if (nextPin === targetPin) {
         onSuccess();
         onClose();
-      } else if (nextPin.length === 4 && nextPin !== '0045') {
+      } else if (nextPin.length >= targetPin.length && nextPin !== targetPin) {
         setError('Code d’autorisation incorrect. Accès refusé.');
       }
     }
@@ -88,7 +94,7 @@ export const PinModal: React.FC<PinModalProps> = ({
             Action protégée : <strong className="text-white">{actionTitle}</strong>
           </p>
           <p className="text-[11px] text-[#9e8b7b] mt-0.5">
-            Saisissez le code secret de modification pour continuer
+            Saisissez votre code secret d'autorisation pour déverrouiller
           </p>
         </div>
 
@@ -105,23 +111,31 @@ export const PinModal: React.FC<PinModalProps> = ({
           <div className="relative flex items-center justify-center">
             <input
               ref={inputRef}
-              type="password"
+              type={showPin ? 'text' : 'password'}
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={8}
               value={pin}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '');
                 setPin(val);
                 setError(null);
-                if (val === '0045') {
+                if (val === targetPin) {
                   onSuccess();
                   onClose();
                 }
               }}
               placeholder="••••"
-              className="w-40 text-center tracking-[0.4em] font-mono text-2xl font-bold py-2 bg-[#17120e] text-[#faf6f0] border-2 border-[#8c6239] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c4a482] transition-all shadow-inner"
+              className="w-44 text-center tracking-[0.4em] font-mono text-2xl font-bold py-2 bg-[#17120e] text-[#faf6f0] border-2 border-[#8c6239] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c4a482] transition-all shadow-inner"
             />
+            <button
+              type="button"
+              onClick={() => setShowPin(!showPin)}
+              className="absolute right-3 p-1.5 text-stone-400 hover:text-stone-200 cursor-pointer"
+              title={showPin ? 'Masquer' : 'Afficher'}
+            >
+              {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </form>
 

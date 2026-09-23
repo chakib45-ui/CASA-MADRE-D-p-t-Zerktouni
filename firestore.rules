@@ -43,6 +43,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Journal d'historique des accès et connexions
+    match /access_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Configuration globale et sécurité (ex: code PIN d'autorisation)
+    match /app_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

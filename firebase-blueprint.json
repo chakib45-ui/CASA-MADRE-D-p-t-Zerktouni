@@ -80,12 +80,46 @@
         "reviewedBy": { "type": "string" }
       },
       "required": ["uid", "email", "status"]
+    },
+    "access_logs": {
+      "title": "AccessLog",
+      "description": "Audit log of logins, approvals, and security PIN events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "action", "timestamp"]
+    },
+    "app_config": {
+      "title": "AppConfig",
+      "description": "Global security and application configuration such as dynamic PIN",
+      "type": "object",
+      "properties": {
+        "pinCode": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/user_approvals/{userId}": {
       "schema": "user_approvals",
       "description": "Approval request and status for reader access"
+    },
+    "/access_logs/{logId}": {
+      "schema": "access_logs",
+      "description": "Real-time access audit logs"
+    },
+    "/app_config/{configId}": {
+      "schema": "app_config",
+      "description": "Application security and PIN configuration"
     },
     "/users/{userId}": {
       "schema": "users",

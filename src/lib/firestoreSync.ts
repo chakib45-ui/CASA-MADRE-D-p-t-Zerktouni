@@ -6,11 +6,16 @@ import {
   getDoc,
   getDocs,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  addDoc
 } from './firebase';
-import { ArticleItem, CatalogConfig, UserRole, UserApprovalRequest } from '../types';
+import { ArticleItem, CatalogConfig, UserRole, UserApprovalRequest, AccessLogEntry, SecurityConfig } from '../types';
 
 export const ADMIN_EMAIL = 'chakib.45@gmail.com';
+export const DEFAULT_PIN = '0045';
 
 export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false;
@@ -276,13 +281,14 @@ export async function checkOrCreateUserApproval(user: {
       const approvalRef = doc(db, 'user_approvals', user.uid);
       await setDoc(approvalRef, {
         uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || 'Administrateur',
+        email: user.email || ADMIN_EMAIL,
+        displayName: user.displayName || 'Chakib (Admin)',
         photoURL: user.photoURL || '',
         status: 'admin',
         requestedAt: new Date().toISOString(),
         reviewedAt: new Date().toISOString(),
-        reviewedBy: 'system'
+        reviewedBy: 'Système',
+        lastLoginAt: new Date().toISOString()
       }, { merge: true });
     } catch (e) {
       console.warn('Could not update admin approval record:', e);
@@ -297,6 +303,12 @@ export async function checkOrCreateUserApproval(user: {
     if (snap.exists()) {
       const data = snap.data();
       const currentStatus = data.status as UserRole;
+      // Record last login
+      await setDoc(approvalRef, {
+        lastLoginAt: new Date().toISOString(),
+        loginCount: ((data.loginCount || 0) + 1)
+      }, { merge: true });
+
       // If user was explicitly rejected by admin, respect rejection
       if (currentStatus === 'rejected') return 'rejected';
       // If marked admin, grant admin
@@ -313,7 +325,9 @@ export async function checkOrCreateUserApproval(user: {
         status: 'approved',
         requestedAt: new Date().toISOString(),
         reviewedAt: new Date().toISOString(),
-        reviewedBy: 'auto-approval'
+        reviewedBy: 'auto-approval',
+        lastLoginAt: new Date().toISOString(),
+        loginCount: 1
       };
       await setDoc(approvalRef, newRequest, { merge: true });
       return 'approved';
@@ -358,36 +372,95 @@ export function subscribeToUserApproval(
 
 /**
  * Subscribes to all approval requests (for Admin dashboard).
+ * Combines both /user_approvals and /users collections, and guarantees Admin is always listed.
  */
 export function subscribeToAllApprovals(
   onUpdate: (requests: UserApprovalRequest[]) => void
 ): () => void {
   const colRef = collection(db, 'user_approvals');
+
+  const ensureAdmin = (list: UserApprovalRequest[]): UserApprovalRequest[] => {
+    const hasAdmin = list.some(r => isAdminEmail(r.email));
+    if (!hasAdmin) {
+      list.unshift({
+        uid: 'admin-chakib-fixed',
+        email: ADMIN_EMAIL,
+        displayName: 'Chakib (Admin)',
+        photoURL: '',
+        status: 'admin',
+        requestedAt: new Date().toISOString(),
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: 'Système',
+        lastLoginAt: new Date().toISOString(),
+        loginCount: 1
+      });
+    }
+    return list;
+  };
+
   return onSnapshot(
     colRef,
-    snap => {
-      const list: UserApprovalRequest[] = [];
+    async snap => {
+      const map = new Map<string, UserApprovalRequest>();
+
+      // 1. Process user_approvals
       snap.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.uid) {
-          list.push({
-            uid: data.uid,
+        const uid = data.uid || docSnap.id;
+        if (uid) {
+          map.set(uid, {
+            uid,
             email: data.email || '',
             displayName: data.displayName || '',
             photoURL: data.photoURL || '',
             status: (data.status as UserRole) || 'pending',
             requestedAt: data.requestedAt || '',
             reviewedAt: data.reviewedAt || '',
-            reviewedBy: data.reviewedBy || ''
+            reviewedBy: data.reviewedBy || '',
+            lastLoginAt: data.lastLoginAt || '',
+            loginCount: data.loginCount || 1
           });
         }
       });
-      // Sort newest requested first
-      list.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
+
+      // 2. Also check /users to ensure all registered accounts appear
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        usersSnap.forEach(uDoc => {
+          const uData = uDoc.data();
+          const uid = uDoc.id;
+          if (!map.has(uid) && (uData.email || uData.displayName)) {
+            const isUserAdmin = isAdminEmail(uData.email);
+            map.set(uid, {
+              uid,
+              email: uData.email || '',
+              displayName: uData.displayName || (uData.email ? uData.email.split('@')[0] : 'Utilisateur'),
+              photoURL: uData.photoURL || '',
+              status: isUserAdmin ? 'admin' : ((uData.role as UserRole) || 'approved'),
+              requestedAt: uData.lastLoginAt || new Date().toISOString(),
+              lastLoginAt: uData.lastLoginAt || '',
+              loginCount: 1
+            });
+          }
+        });
+      } catch {
+        // Continue if secondary query fails
+      }
+
+      let list = ensureAdmin(Array.from(map.values()));
+
+      // Sort: Admin first, then newest
+      list.sort((a, b) => {
+        if (a.status === 'admin' && b.status !== 'admin') return -1;
+        if (b.status === 'admin' && a.status !== 'admin') return 1;
+        return (b.requestedAt || '').localeCompare(a.requestedAt || '');
+      });
+
       onUpdate(list);
     },
     err => {
-      console.warn('subscribeToAllApprovals error:', err);
+      console.warn('subscribeToAllApprovals error, falling back with admin:', err);
+      onUpdate(ensureAdmin([]));
     }
   );
 }
@@ -398,7 +471,8 @@ export function subscribeToAllApprovals(
 export async function updateUserApproval(
   targetUid: string,
   newStatus: UserRole,
-  adminEmail: string
+  adminEmail: string,
+  targetEmail?: string
 ): Promise<void> {
   if (!targetUid) return;
   const approvalRef = doc(db, 'user_approvals', targetUid);
@@ -410,6 +484,202 @@ export async function updateUserApproval(
       reviewedBy: adminEmail
     },
     { merge: true }
+  );
+
+  // Log action
+  await logAccessEvent({
+    uid: targetUid,
+    email: targetEmail || 'utilisateur',
+    displayName: targetEmail ? targetEmail.split('@')[0] : 'Utilisateur',
+    role: newStatus,
+    action: 'approval_change',
+    details: `Statut modifié à [${newStatus}] par l'administrateur (${adminEmail})`
+  });
+}
+
+/**
+ * Records an access or security event in Firestore and local history.
+ */
+export async function logAccessEvent(event: {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+  role?: UserRole;
+  action: 'login' | 'approval_change' | 'pin_unlock' | 'pin_change' | 'logout' | 'demo_access';
+  details?: string;
+}): Promise<void> {
+  const logId = `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const entry: AccessLogEntry = {
+    id: logId,
+    uid: event.uid || 'anonyme',
+    email: event.email || 'visiteur@casamadre.fr',
+    displayName: event.displayName || (event.email ? event.email.split('@')[0] : 'Visiteur'),
+    role: event.role || 'approved',
+    action: event.action,
+    details: event.details || '',
+    timestamp: new Date().toISOString()
+  };
+
+  // Cache locally
+  try {
+    const raw = localStorage.getItem('casamadre_access_logs');
+    const existing: AccessLogEntry[] = raw ? JSON.parse(raw) : [];
+    existing.unshift(entry);
+    localStorage.setItem('casamadre_access_logs', JSON.stringify(existing.slice(0, 150)));
+  } catch {
+    // Ignore local storage quota errors
+  }
+
+  // Save to Firestore
+  try {
+    const logDoc = doc(db, 'access_logs', logId);
+    await setDoc(logDoc, entry);
+  } catch (e) {
+    console.warn('logAccessEvent firestore write note:', e);
+  }
+}
+
+/**
+ * Subscribes to the real-time access history log (combining Firestore & local cache).
+ */
+export function subscribeToAccessLogs(onUpdate: (logs: AccessLogEntry[]) => void): () => void {
+  let localLogs: AccessLogEntry[] = [];
+  try {
+    const raw = localStorage.getItem('casamadre_access_logs');
+    if (raw) localLogs = JSON.parse(raw);
+  } catch {
+    localLogs = [];
+  }
+
+  if (localLogs.length > 0) {
+    onUpdate(localLogs);
+  }
+
+  const logsCol = collection(db, 'access_logs');
+  return onSnapshot(
+    logsCol,
+    snap => {
+      const remoteLogs: AccessLogEntry[] = [];
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.action && data.timestamp) {
+          remoteLogs.push({
+            id: docSnap.id,
+            uid: data.uid || '',
+            email: data.email || '',
+            displayName: data.displayName || '',
+            role: (data.role as UserRole) || 'approved',
+            action: data.action,
+            details: data.details || '',
+            timestamp: data.timestamp
+          });
+        }
+      });
+
+      // Merge remote and local
+      const map = new Map<string, AccessLogEntry>();
+      localLogs.forEach(l => map.set(l.id, l));
+      remoteLogs.forEach(l => map.set(l.id, l));
+
+      const merged = Array.from(map.values()).sort(
+        (a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')
+      );
+
+      try {
+        localStorage.setItem('casamadre_access_logs', JSON.stringify(merged.slice(0, 150)));
+      } catch {}
+
+      onUpdate(merged);
+    },
+    err => {
+      console.warn('subscribeToAccessLogs error, using local fallback:', err);
+      onUpdate(localLogs);
+    }
+  );
+}
+
+/**
+ * Fetches the current authorization PIN code.
+ */
+export async function fetchSecurityPin(): Promise<string> {
+  try {
+    const pinDoc = await getDoc(doc(db, 'app_config', 'security'));
+    if (pinDoc.exists()) {
+      const data = pinDoc.data();
+      if (data?.pinCode) {
+        localStorage.setItem('casamadre_admin_pin', data.pinCode);
+        return data.pinCode;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchSecurityPin firestore fallback:', err);
+  }
+  return localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN;
+}
+
+/**
+ * Updates the authorization PIN code (Admin action).
+ */
+export async function updateSecurityPin(newPin: string, adminEmail: string): Promise<boolean> {
+  const cleanPin = newPin.trim();
+  if (!cleanPin || cleanPin.length < 4 || cleanPin.length > 8 || !/^\d+$/.test(cleanPin)) {
+    throw new Error('Le code PIN doit comporter entre 4 et 8 chiffres numériques.');
+  }
+
+  try {
+    const secRef = doc(db, 'app_config', 'security');
+    await setDoc(
+      secRef,
+      {
+        pinCode: cleanPin,
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('updateSecurityPin remote error, saved locally:', err);
+  }
+
+  localStorage.setItem('casamadre_admin_pin', cleanPin);
+
+  await logAccessEvent({
+    uid: 'admin',
+    email: adminEmail,
+    displayName: 'Administrateur',
+    role: 'admin',
+    action: 'pin_change',
+    details: `Nouveau code PIN d'autorisation configuré (${cleanPin.replace(/./g, '•')})`
+  });
+
+  return true;
+}
+
+/**
+ * Subscribes to real-time updates for authorization PIN code.
+ */
+export function subscribeToSecurityPin(onUpdate: (pin: string) => void): () => void {
+  const initialPin = localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN;
+  onUpdate(initialPin);
+
+  const secRef = doc(db, 'app_config', 'security');
+  return onSnapshot(
+    secRef,
+    snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data?.pinCode) {
+          localStorage.setItem('casamadre_admin_pin', data.pinCode);
+          onUpdate(data.pinCode);
+          return;
+        }
+      }
+      onUpdate(localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN);
+    },
+    err => {
+      console.warn('subscribeToSecurityPin listener error:', err);
+      onUpdate(localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN);
+    }
   );
 }
 

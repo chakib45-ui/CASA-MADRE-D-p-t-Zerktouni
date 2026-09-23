@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Check, Trash2, HelpCircle, Loader2, Download, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ArticleItem } from '../types';
-import { optimizeImageFile, downloadImageFile, isImageFile } from '../utils/imageOptimizer';
+import { optimizeImageFile, downloadImageFile, isImageFile, FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
 
 interface ArticleEditorModalProps {
   isOpen: boolean;
@@ -186,9 +186,15 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 </div>
               ) : formData.imageUrl ? (
                 <img
-                  src={formData.imageUrl}
+                  src={formData.imageUrl || FALLBACK_ANTIQUE_IMAGE}
                   alt={formData.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+                      target.src = FALLBACK_ANTIQUE_IMAGE;
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-stone-400">

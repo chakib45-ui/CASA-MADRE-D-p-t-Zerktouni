@@ -17,7 +17,7 @@ import {
   PanelLeftClose
 } from 'lucide-react';
 import { ArticleItem } from '../types';
-import { downloadImageFile } from '../utils/imageOptimizer';
+import { downloadImageFile, FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
 
 interface InventorySidebarProps {
   articles: ArticleItem[];
@@ -248,10 +248,15 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
                   title="Cliquer pour voir la photo en haute clarté et zoomer"
                 >
                   <img
-                    src={article.imageUrl}
+                    src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
                     alt={article.name}
                     className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
-                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+                        target.src = FALLBACK_ANTIQUE_IMAGE;
+                      }
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
                     <ZoomIn className="w-4 h-4 text-white drop-shadow" />

@@ -187,7 +187,7 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
                 </div>
                 {!isAdmin && (
                   <p className="text-[10px] text-stone-400 italic bg-[#1f1713] p-1.5 rounded border border-[#3d2e23]">
-                    🔒 Code <strong>0045</strong> requis pour modifier, importer ou supprimer des articles.
+                    🔒 Code PIN secret requis pour modifier, importer ou supprimer des articles.
                   </p>
                 )}
                 <p className="flex items-center justify-between text-stone-400">

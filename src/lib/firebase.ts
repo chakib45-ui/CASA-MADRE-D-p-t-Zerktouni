@@ -24,6 +24,10 @@ import {
   getDocs,
   deleteDoc,
   onSnapshot,
+  query,
+  orderBy,
+  limit,
+  addDoc,
   Firestore
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -132,7 +136,11 @@ export {
   getDoc,
   getDocs,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  addDoc
 };
 export type { User };
 

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ArticleItem, CatalogConfig } from '../types';
 import { getCleanArticleName, getCleanPeriod, getCleanMaterial } from '../utils/nameCleaner';
-import { downloadImageFile } from '../utils/imageOptimizer';
+import { downloadImageFile, FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
 
 interface ImageViewerModalProps {
   isOpen: boolean;
@@ -266,9 +266,8 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           {/* Subtle frame styling with clean scan corner marks */}
           <div className="relative bg-black/40 rounded-xs p-1 shadow-2xl border border-white/15 overflow-hidden">
             <img
-              src={article.imageUrl}
+              src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
               alt={cleanName}
-              crossOrigin="anonymous"
               className="max-h-[75vh] max-w-[85vw] object-contain select-none"
               style={{
                 filter: showScanFilter 
@@ -277,6 +276,12 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 imageRendering: 'auto',
               }}
               draggable={false}
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                if (target.src !== FALLBACK_ANTIQUE_IMAGE) {
+                  target.src = FALLBACK_ANTIQUE_IMAGE;
+                }
+              }}
             />
 
             {/* Corner alignment brackets */}
