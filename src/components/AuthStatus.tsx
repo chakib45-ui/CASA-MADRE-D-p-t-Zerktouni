@@ -16,7 +16,7 @@ import { UserProfile } from '../types';
 interface AuthStatusProps {
   user: UserProfile | null;
   isLoading: boolean;
-  syncStatus: 'synced' | 'syncing' | 'offline' | 'error';
+  syncStatus: 'synced' | 'syncing' | 'offline' | 'error' | 'quota_exceeded';
   onSignIn: () => void;
   onSignOut: () => void;
   onManualSync?: () => void;
@@ -77,6 +77,8 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
             ? 'Données sauvegardées en temps réel dans Firestore'
             : syncStatus === 'syncing'
             ? 'Synchronisation avec Firestore en cours...'
+            : syncStatus === 'quota_exceeded'
+            ? 'Quota quotidien Firestore atteint. Sauvegarde locale active (100% sécurisée).'
             : syncStatus === 'error'
             ? 'Erreur de synchronisation Firestore'
             : 'Mode hors-ligne actif (cache local)'
@@ -92,6 +94,12 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
           <>
             <RefreshCw className="w-3 h-3 text-amber-300 animate-spin" />
             <span className="hidden lg:inline text-amber-300 font-medium">Synchro...</span>
+          </>
+        )}
+        {syncStatus === 'quota_exceeded' && (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="hidden lg:inline text-amber-300 font-medium">Local (Quota Firestore)</span>
           </>
         )}
         {syncStatus === 'offline' && (
@@ -195,6 +203,27 @@ export const AuthStatus: React.FC<AuthStatusProps> = ({
                   <span className="text-amber-300 font-mono">Firestore Cloud</span>
                 </p>
               </div>
+
+              {/* Quota Exceeded Info Banner */}
+              {syncStatus === 'quota_exceeded' && (
+                <div className="mb-2.5 p-2 bg-amber-950/40 border border-amber-700/60 rounded text-[11px] text-amber-200">
+                  <p className="font-semibold text-amber-300 mb-0.5 flex items-center gap-1">
+                    <span>⚡</span>
+                    <span>Quota Cloud atteint</span>
+                  </p>
+                  <p className="text-[10px] text-amber-200/80 mb-1 leading-snug">
+                    Le quota d'écriture gratuit quotidien Firestore a été atteint. Vos données sont 100% enregistrées en local sur cet appareil et ne sont jamais perdues.
+                  </p>
+                  <a 
+                    href="https://console.firebase.google.com/project/imperial-being-mlkcn/firestore/databases/ai-studio-casamadreinventa-b826feac-7a37-42a9-89c9-35f5a72f587d/data?openUpgradeDialog=true" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="inline-block text-[10px] text-amber-400 underline hover:text-amber-300 font-medium"
+                  >
+                    Ouvrir la console Firebase &rarr;
+                  </a>
+                </div>
+              )}
 
               {/* Admin Accès Panel */}
               {isAdmin && onOpenUserManagement && (

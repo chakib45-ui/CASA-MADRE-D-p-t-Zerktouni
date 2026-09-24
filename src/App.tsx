@@ -47,6 +47,8 @@ import {
   subscribeToAccessLogs,
   logAccessEvent,
   isAdminEmail,
+  subscribeToQuotaStatus,
+  isFirestoreQuotaExceeded,
   ADMIN_EMAIL,
   DEFAULT_PIN
 } from './lib/firestoreSync';
@@ -60,7 +62,7 @@ export default function App() {
   // Firebase Auth state & Sync status
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('offline');
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error' | 'quota_exceeded'>('offline');
   const userRef = useRef<UserProfile | null>(null);
   userRef.current = currentUser;
 
@@ -189,7 +191,7 @@ export default function App() {
         userRef.current = profile;
 
         try {
-          // Record/update user doc in Firestore
+          // Record/update user doc in Firestore (if quota allows)
           await syncUserProfile(profile);
 
           // Check or create approval request in Firestore
@@ -198,15 +200,19 @@ export default function App() {
           profile.role = role;
           setCurrentUser({ ...profile });
 
-          // Log access event
-          await logAccessEvent({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            role: role,
-            action: 'login',
-            details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
-          });
+          // Log access event once per session
+          const sessionLoggedKey = `casamadre_session_login_${user.uid}`;
+          if (!sessionStorage.getItem(sessionLoggedKey)) {
+            sessionStorage.setItem(sessionLoggedKey, '1');
+            await logAccessEvent({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              role: role,
+              action: 'login',
+              details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
+            });
+          }
 
           // Subscribe to access logs
           unsubscribeLogs = subscribeToAccessLogs((logs) => {
@@ -231,29 +237,25 @@ export default function App() {
 
           // Fetch remote articles and config if approved or admin
           if (role === 'admin' || role === 'approved') {
-            setSyncStatus('syncing');
-            const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
-            const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
+            setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'syncing');
+            try {
+              const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
+              const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
 
-            if (remoteArticles && remoteArticles.length > 0) {
-              setArticles(remoteArticles);
-              await setStoredItem('casamadre_articles', remoteArticles);
-            } else {
-              // Sync current local articles to Firestore
-              const localArticles = await getStoredItem<ArticleItem[]>('casamadre_articles') || articles;
-              if (localArticles && localArticles.length > 0) {
-                await syncAllArticlesToFirestore(user.uid, localArticles);
+              if (remoteArticles && remoteArticles.length > 0) {
+                setArticles(remoteArticles);
+                await setStoredItem('casamadre_articles', remoteArticles);
               }
+
+              if (remoteConfig) {
+                setConfig(remoteConfig);
+                await setStoredItem('casamadre_config', remoteConfig);
+              }
+            } catch (fetchErr) {
+              console.warn('Note reading remote articles (using local DB):', fetchErr);
             }
 
-            if (remoteConfig) {
-              setConfig(remoteConfig);
-              await setStoredItem('casamadre_config', remoteConfig);
-            } else {
-              await syncConfigToFirestore(user.uid, config);
-            }
-
-            setSyncStatus('synced');
+            setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'synced');
             showToast(role === 'admin' 
               ? `Bienvenue Administrateur : ${user.displayName || user.email}`
               : `Bienvenue : ${user.displayName || user.email || 'Lecteur'}`
@@ -339,12 +341,22 @@ export default function App() {
       showToast('Connectez-vous pour synchroniser avec Firestore Cloud');
       return;
     }
+    if (isFirestoreQuotaExceeded()) {
+      setSyncStatus('quota_exceeded');
+      showToast('Quota Firestore journalier atteint. Données protégées en local.');
+      return;
+    }
     try {
       setSyncStatus('syncing');
       await syncAllArticlesToFirestore(currentUser.uid, articles);
       await syncConfigToFirestore(currentUser.uid, config);
-      setSyncStatus('synced');
-      showToast('Tous les articles ont été synchronisés avec Firestore');
+      if (isFirestoreQuotaExceeded()) {
+        setSyncStatus('quota_exceeded');
+        showToast('Quota Firestore journalier atteint. Vos données restent enregistrées en local.');
+      } else {
+        setSyncStatus('synced');
+        showToast('Tous les articles ont été synchronisés avec Firestore');
+      }
     } catch (err) {
       console.error('Manual sync failed:', err);
       setSyncStatus('error');
@@ -456,25 +468,21 @@ export default function App() {
     loadData();
   }, []);
 
-  // Auto-save articles to IndexedDB and Cloud Firestore if logged in
+  // Listen to Firestore quota status
+  useEffect(() => {
+    const unsub = subscribeToQuotaStatus((exceeded) => {
+      if (exceeded) {
+        setSyncStatus('quota_exceeded');
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Auto-save articles to IndexedDB (ultra-fast, persistent, offline-ready)
   useEffect(() => {
     if (!isLoadedRef.current) return;
     setStoredItem('casamadre_articles', articles);
-
-    if (currentUser?.uid) {
-      setSyncStatus('syncing');
-      const timer = setTimeout(async () => {
-        try {
-          await syncAllArticlesToFirestore(currentUser.uid, articles);
-          setSyncStatus('synced');
-        } catch (err) {
-          console.error('Auto-sync articles error:', err);
-          setSyncStatus('error');
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [articles, currentUser?.uid]);
+  }, [articles]);
 
   // Auto-save config
   useEffect(() => {
@@ -748,6 +756,9 @@ export default function App() {
       name: `${article.name} (Copie)`,
     };
     setArticles([...articles, duplicated]);
+    if (currentUser?.uid) {
+      syncArticleToFirestore(currentUser.uid, duplicated).catch(console.warn);
+    }
     showToast(`Article dupliqué : ${duplicated.name}`);
   };
 
@@ -776,6 +787,11 @@ export default function App() {
   // Add batch articles
   const handleAddBatchArticles = (newArticles: ArticleItem[]) => {
     setArticles([...articles, ...newArticles]);
+    if (currentUser?.uid && !isFirestoreQuotaExceeded()) {
+      newArticles.forEach(art => {
+        syncArticleToFirestore(currentUser.uid, art).catch(console.warn);
+      });
+    }
     const targetFolder = newArticles[0]?.folder || activeFolder;
     showToast(`${newArticles.length} article(s) enregistré(s) dans le dossier « ${targetFolder} »`);
   };
@@ -783,6 +799,9 @@ export default function App() {
   // Add single scanned / captured article
   const handleAddSingleArticle = (newArticle: ArticleItem) => {
     setArticles(prev => [newArticle, ...prev]);
+    if (currentUser?.uid) {
+      syncArticleToFirestore(currentUser.uid, newArticle).catch(console.warn);
+    }
     showToast(`Photo capturée et ajoutée au dossier « ${newArticle.folder} »`);
   };
 

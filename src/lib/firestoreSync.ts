@@ -17,56 +17,112 @@ import { ArticleItem, CatalogConfig, UserRole, UserApprovalRequest, AccessLogEnt
 export const ADMIN_EMAIL = 'chakib.45@gmail.com';
 export const DEFAULT_PIN = '0045';
 
+// Circuit breaker for Firestore quota exhaustion
+let isWriteQuotaExceeded = false;
+const quotaListeners: Array<(exceeded: boolean) => void> = [];
+
+export function isFirestoreQuotaExceeded(): boolean {
+  return isWriteQuotaExceeded;
+}
+
+export function subscribeToQuotaStatus(listener: (exceeded: boolean) => void): () => void {
+  quotaListeners.push(listener);
+  listener(isWriteQuotaExceeded);
+  return () => {
+    const idx = quotaListeners.indexOf(listener);
+    if (idx !== -1) quotaListeners.splice(idx, 1);
+  };
+}
+
+export function handleQuotaExceeded(err: any): boolean {
+  const msg = err?.message || String(err);
+  const code = err?.code;
+  if (
+    code === 'resource-exhausted' ||
+    msg.includes('Quota limit exceeded') ||
+    msg.includes('Free daily write units') ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('quota')
+  ) {
+    if (!isWriteQuotaExceeded) {
+      isWriteQuotaExceeded = true;
+      console.warn('⚡ Quota quotidien d’écriture Firestore atteint. Bascule transparente en mode persistance locale ultra-rapide.');
+      quotaListeners.forEach(l => l(true));
+    }
+    return true;
+  }
+  return false;
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   return email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
-
 /**
  * Saves or updates a single article in Firestore for a given user.
  */
 export async function syncArticleToFirestore(userId: string, article: ArticleItem): Promise<void> {
-  if (!userId || !article?.id) return;
-  const articleRef = doc(db, 'users', userId, 'articles', article.id);
-  // Ensure undefined fields are replaced with null or empty string to satisfy Firestore
-  const sanitizedArticle = {
-    id: article.id,
-    ref: article.ref || '',
-    name: article.name || '',
-    imageUrl: article.imageUrl || '',
-    imageFit: article.imageFit || 'contain',
-    folder: article.folder || 'Antiquités',
-    category: article.category || '',
-    material: article.material || '',
-    periodOrStyle: article.periodOrStyle || '',
-    condition: article.condition || '',
-    dimensions: article.dimensions || '',
-    quantity: article.quantity || '1 unit.',
-    price: article.price || '',
-    notes: article.notes || '',
-    userId,
-    updatedAt: new Date().toISOString()
-  };
-  await setDoc(articleRef, sanitizedArticle, { merge: true });
+  if (!userId || !article?.id || isWriteQuotaExceeded) return;
+  try {
+    const articleRef = doc(db, 'users', userId, 'articles', article.id);
+    const sanitizedArticle = {
+      id: article.id,
+      ref: article.ref || '',
+      name: article.name || '',
+      imageUrl: article.imageUrl || '',
+      imageFit: article.imageFit || 'contain',
+      folder: article.folder || 'Antiquités',
+      category: article.category || '',
+      material: article.material || '',
+      periodOrStyle: article.periodOrStyle || '',
+      condition: article.condition || '',
+      dimensions: article.dimensions || '',
+      quantity: article.quantity || '1 unit.',
+      price: article.price || '',
+      notes: article.notes || '',
+      userId,
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(articleRef, sanitizedArticle, { merge: true });
+  } catch (err) {
+    if (handleQuotaExceeded(err)) {
+      return; // Handled gracefully, local DB will preserve data
+    }
+    console.warn('syncArticleToFirestore error:', err);
+  }
 }
 
 /**
  * Syncs the entire articles array to Firestore (e.g. on initial migration or batch operation).
  */
 export async function syncAllArticlesToFirestore(userId: string, articles: ArticleItem[]): Promise<void> {
-  if (!userId || !Array.isArray(articles)) return;
-  const promises = articles.map(article => syncArticleToFirestore(userId, article));
-  await Promise.all(promises);
+  if (!userId || !Array.isArray(articles) || isWriteQuotaExceeded) return;
+  try {
+    const promises = articles.map(article => syncArticleToFirestore(userId, article));
+    await Promise.all(promises);
+  } catch (err) {
+    if (handleQuotaExceeded(err)) {
+      return;
+    }
+    console.warn('syncAllArticlesToFirestore error:', err);
+  }
 }
 
 /**
  * Deletes an article from Firestore.
  */
 export async function deleteArticleFromFirestore(userId: string, articleId: string): Promise<void> {
-  if (!userId || !articleId) return;
-  const articleRef = doc(db, 'users', userId, 'articles', articleId);
-  await deleteDoc(articleRef);
+  if (!userId || !articleId || isWriteQuotaExceeded) return;
+  try {
+    const articleRef = doc(db, 'users', userId, 'articles', articleId);
+    await deleteDoc(articleRef);
+  } catch (err) {
+    if (handleQuotaExceeded(err)) {
+      return;
+    }
+    console.warn('deleteArticleFromFirestore error:', err);
+  }
 }
 
 /**
@@ -168,7 +224,13 @@ export async function syncConfigToFirestore(userId: string, config: CatalogConfi
     uiDarkMode: !!config.uiDarkMode,
     updatedAt: new Date().toISOString()
   };
-  await setDoc(configRef, payload, { merge: true });
+  if (isWriteQuotaExceeded) return;
+  try {
+    await setDoc(configRef, payload, { merge: true });
+  } catch (err) {
+    if (handleQuotaExceeded(err)) return;
+    console.warn('syncConfigToFirestore remote write note:', err);
+  }
 }
 
 /**
@@ -250,15 +312,20 @@ export function subscribeToUserConfig(
  * Ensures user doc exists in /users/{userId}
  */
 export async function syncUserProfile(user: { uid: string; email?: string | null; displayName?: string | null; photoURL?: string | null }): Promise<void> {
-  if (!user?.uid) return;
-  const userRef = doc(db, 'users', user.uid);
-  await setDoc(userRef, {
-    uid: user.uid,
-    email: user.email || '',
-    displayName: user.displayName || '',
-    photoURL: user.photoURL || '',
-    lastLoginAt: new Date().toISOString()
-  }, { merge: true });
+  if (!user?.uid || isWriteQuotaExceeded) return;
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email || '',
+      displayName: user.displayName || '',
+      photoURL: user.photoURL || '',
+      lastLoginAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    if (handleQuotaExceeded(err)) return;
+    console.warn('syncUserProfile note:', err);
+  }
 }
 
 /**
@@ -277,23 +344,31 @@ export async function checkOrCreateUserApproval(user: {
   // Admin bypass
   if (isAdminEmail(user.email)) {
     // Also ensure admin doc in approvals is marked admin
-    try {
-      const approvalRef = doc(db, 'user_approvals', user.uid);
-      await setDoc(approvalRef, {
-        uid: user.uid,
-        email: user.email || ADMIN_EMAIL,
-        displayName: user.displayName || 'Chakib (Admin)',
-        photoURL: user.photoURL || '',
-        status: 'admin',
-        requestedAt: new Date().toISOString(),
-        reviewedAt: new Date().toISOString(),
-        reviewedBy: 'Système',
-        lastLoginAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.warn('Could not update admin approval record:', e);
+    if (!isWriteQuotaExceeded) {
+      try {
+        const approvalRef = doc(db, 'user_approvals', user.uid);
+        await setDoc(approvalRef, {
+          uid: user.uid,
+          email: user.email || ADMIN_EMAIL,
+          displayName: user.displayName || 'Chakib (Admin)',
+          photoURL: user.photoURL || '',
+          status: 'admin',
+          requestedAt: new Date().toISOString(),
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: 'Système',
+          lastLoginAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        if (!handleQuotaExceeded(e)) {
+          console.warn('Could not update admin approval record:', e);
+        }
+      }
     }
     return 'admin';
+  }
+
+  if (isWriteQuotaExceeded) {
+    return 'approved';
   }
 
   // Regular user: check /user_approvals/{uid}
@@ -303,11 +378,17 @@ export async function checkOrCreateUserApproval(user: {
     if (snap.exists()) {
       const data = snap.data();
       const currentStatus = data.status as UserRole;
-      // Record last login
-      await setDoc(approvalRef, {
-        lastLoginAt: new Date().toISOString(),
-        loginCount: ((data.loginCount || 0) + 1)
-      }, { merge: true });
+      // Record last login if quota permits
+      if (!isWriteQuotaExceeded) {
+        try {
+          await setDoc(approvalRef, {
+            lastLoginAt: new Date().toISOString(),
+            loginCount: ((data.loginCount || 0) + 1)
+          }, { merge: true });
+        } catch (e) {
+          handleQuotaExceeded(e);
+        }
+      }
 
       // If user was explicitly rejected by admin, respect rejection
       if (currentStatus === 'rejected') return 'rejected';
@@ -329,10 +410,17 @@ export async function checkOrCreateUserApproval(user: {
         lastLoginAt: new Date().toISOString(),
         loginCount: 1
       };
-      await setDoc(approvalRef, newRequest, { merge: true });
+      if (!isWriteQuotaExceeded) {
+        try {
+          await setDoc(approvalRef, newRequest, { merge: true });
+        } catch (e) {
+          handleQuotaExceeded(e);
+        }
+      }
       return 'approved';
     }
   } catch (err) {
+    handleQuotaExceeded(err);
     console.warn('Note in checkOrCreateUserApproval, defaulting to approved reader:', err);
     return 'approved';
   }
@@ -475,16 +563,22 @@ export async function updateUserApproval(
   targetEmail?: string
 ): Promise<void> {
   if (!targetUid) return;
-  const approvalRef = doc(db, 'user_approvals', targetUid);
-  await setDoc(
-    approvalRef,
-    {
-      status: newStatus,
-      reviewedAt: new Date().toISOString(),
-      reviewedBy: adminEmail
-    },
-    { merge: true }
-  );
+  if (!isWriteQuotaExceeded) {
+    try {
+      const approvalRef = doc(db, 'user_approvals', targetUid);
+      await setDoc(
+        approvalRef,
+        {
+          status: newStatus,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: adminEmail
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      handleQuotaExceeded(err);
+    }
+  }
 
   // Log action
   await logAccessEvent({
@@ -530,12 +624,16 @@ export async function logAccessEvent(event: {
     // Ignore local storage quota errors
   }
 
-  // Save to Firestore
-  try {
-    const logDoc = doc(db, 'access_logs', logId);
-    await setDoc(logDoc, entry);
-  } catch (e) {
-    console.warn('logAccessEvent firestore write note:', e);
+  // Save to Firestore only if quota permits
+  if (!isWriteQuotaExceeded) {
+    try {
+      const logDoc = doc(db, 'access_logs', logId);
+      await setDoc(logDoc, entry);
+    } catch (e) {
+      if (!handleQuotaExceeded(e)) {
+        console.warn('logAccessEvent firestore write note:', e);
+      }
+    }
   }
 }
 
@@ -626,19 +724,23 @@ export async function updateSecurityPin(newPin: string, adminEmail: string): Pro
     throw new Error('Le code PIN doit comporter entre 4 et 8 chiffres numériques.');
   }
 
-  try {
-    const secRef = doc(db, 'app_config', 'security');
-    await setDoc(
-      secRef,
-      {
-        pinCode: cleanPin,
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminEmail
-      },
-      { merge: true }
-    );
-  } catch (err) {
-    console.warn('updateSecurityPin remote error, saved locally:', err);
+  if (!isWriteQuotaExceeded) {
+    try {
+      const secRef = doc(db, 'app_config', 'security');
+      await setDoc(
+        secRef,
+        {
+          pinCode: cleanPin,
+          updatedAt: new Date().toISOString(),
+          updatedBy: adminEmail
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      if (!handleQuotaExceeded(err)) {
+        console.warn('updateSecurityPin remote error, saved locally:', err);
+      }
+    }
   }
 
   localStorage.setItem('casamadre_admin_pin', cleanPin);
