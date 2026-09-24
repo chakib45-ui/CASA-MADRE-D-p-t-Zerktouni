@@ -430,6 +430,9 @@ app.post('/api/analyze-vision', async (req, res) => {
 });
 
 async function startServer() {
+  // Serve public directory (assets, downloadable zip archive, etc.)
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   // Mount Vite middleware in development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
