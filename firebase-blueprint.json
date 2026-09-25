@@ -132,6 +132,10 @@
     "/users/{userId}/config/catalog": {
       "schema": "catalogConfig",
       "description": "Catalog configuration document for a specific user"
+    },
+    "/inventory/{articleId}": {
+      "schema": "articles",
+      "description": "Shared inventory items accessible to all authenticated catalog users"
     }
   }
 }

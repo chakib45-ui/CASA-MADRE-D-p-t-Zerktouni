@@ -49,6 +49,7 @@ import {
   isAdminEmail,
   subscribeToQuotaStatus,
   isFirestoreQuotaExceeded,
+  resetQuotaStatus,
   ADMIN_EMAIL,
   DEFAULT_PIN
 } from './lib/firestoreSync';
@@ -191,8 +192,10 @@ export default function App() {
         userRef.current = profile;
 
         try {
-          // Record/update user doc in Firestore (if quota allows)
-          await syncUserProfile(profile);
+          // Record/update user doc in Firestore only if quota permits
+          if (!isFirestoreQuotaExceeded()) {
+            await syncUserProfile(profile);
+          }
 
           // Check or create approval request in Firestore
           const role = await checkOrCreateUserApproval(profile);
@@ -200,18 +203,20 @@ export default function App() {
           profile.role = role;
           setCurrentUser({ ...profile });
 
-          // Log access event once per session
+          // Log access event once per session only if quota permits
           const sessionLoggedKey = `casamadre_session_login_${user.uid}`;
           if (!sessionStorage.getItem(sessionLoggedKey)) {
             sessionStorage.setItem(sessionLoggedKey, '1');
-            await logAccessEvent({
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              role: role,
-              action: 'login',
-              details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
-            });
+            if (!isFirestoreQuotaExceeded()) {
+              await logAccessEvent({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                role: role,
+                action: 'login',
+                details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
+              });
+            }
           }
 
           // Subscribe to access logs
@@ -219,7 +224,7 @@ export default function App() {
             setAccessLogs(logs);
           });
 
-          if (role === 'admin') {
+          if (role === 'admin' || isUserAdmin) {
             // Admin: subscribe to all user approval requests for real-time dashboard
             unsubscribeApprovals = subscribeToAllApprovals((reqs) => {
               setApprovalRequests(reqs);
@@ -236,7 +241,7 @@ export default function App() {
           }
 
           // Fetch remote articles and config if approved or admin
-          if (role === 'admin' || role === 'approved') {
+          if (role === 'admin' || role === 'approved' || isUserAdmin) {
             setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'syncing');
             try {
               const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
@@ -256,7 +261,7 @@ export default function App() {
             }
 
             setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'synced');
-            showToast(role === 'admin' 
+            showToast((role === 'admin' || isUserAdmin)
               ? `Bienvenue Administrateur : ${user.displayName || user.email}`
               : `Bienvenue : ${user.displayName || user.email || 'Lecteur'}`
             );
@@ -336,12 +341,14 @@ export default function App() {
   };
 
 
-  const handleManualSync = async () => {
+  const handleManualSync = async (forceRetry = false) => {
     if (!currentUser) {
       showToast('Connectez-vous pour synchroniser avec Firestore Cloud');
       return;
     }
-    if (isFirestoreQuotaExceeded()) {
+    if (forceRetry) {
+      resetQuotaStatus();
+    } else if (isFirestoreQuotaExceeded()) {
       setSyncStatus('quota_exceeded');
       showToast('Quota Firestore journalier atteint. Données protégées en local.');
       return;
@@ -358,9 +365,13 @@ export default function App() {
         showToast('Tous les articles ont été synchronisés avec Firestore');
       }
     } catch (err) {
-      console.error('Manual sync failed:', err);
-      setSyncStatus('error');
-      showToast('Erreur lors de la synchronisation cloud');
+      console.warn('Manual sync note:', err);
+      if (isFirestoreQuotaExceeded()) {
+        setSyncStatus('quota_exceeded');
+      } else {
+        setSyncStatus('error');
+        showToast('Erreur lors de la synchronisation cloud');
+      }
     }
   };
 
@@ -494,12 +505,12 @@ export default function App() {
       // ignore
     }
 
-    if (currentUser?.uid) {
+    if (currentUser?.uid && !isFirestoreQuotaExceeded()) {
       const timer = setTimeout(async () => {
         try {
           await syncConfigToFirestore(currentUser.uid, config);
         } catch (err) {
-          console.error('Auto-sync config error:', err);
+          console.warn('Auto-sync config note:', err);
         }
       }, 1200);
       return () => clearTimeout(timer);
@@ -983,6 +994,34 @@ export default function App() {
 
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-[#f4f1eb] dark:bg-[#120d0a] transition-colors ${config.uiDarkMode ? 'dark' : ''}`}>
+      {/* Quota Exceeded Notification Banner */}
+      {syncStatus === 'quota_exceeded' && (
+        <div className="bg-[#2e2016] text-[#f5ebd9] text-xs px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 border-b border-[#5e4330] z-40 select-none no-print">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-amber-400">⚡ Quota d'écriture gratuit Firestore atteint :</span>
+            <span className="text-[11px] text-[#ded2c3]">Vos données sont protégées et enregistrées localement sans interruption.</span>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0 text-[11px]">
+            <button
+              type="button"
+              onClick={() => handleManualSync(true)}
+              className="px-2 py-0.5 rounded bg-[#4a3425] hover:bg-[#5e4330] text-[#f5ebd9] border border-[#6b4e39] font-medium cursor-pointer transition-colors"
+              title="Tester si les quotas ont été réinitialisés"
+            >
+              Tester la synchro
+            </button>
+            <a
+              href="https://console.firebase.google.com/project/imperial-being-mlkcn/firestore/databases/ai-studio-casamadreinventa-b826feac-7a37-42a9-89c9-35f5a72f587d/data?openUpgradeDialog=true"
+              target="_blank"
+              rel="noreferrer"
+              className="text-amber-400 underline hover:text-amber-300 font-semibold"
+            >
+              Activer Blaze / Gérer les quotas &rarr;
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Top Header Épuré avec Menu Outils & Actions centralisé */}
       <Header
         config={config}

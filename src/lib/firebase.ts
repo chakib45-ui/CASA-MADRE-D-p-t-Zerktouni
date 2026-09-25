@@ -11,6 +11,8 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInAnonymously,
+  setPersistence,
+  browserLocalPersistence,
   User
 } from 'firebase/auth';
 import { 
@@ -30,12 +32,33 @@ import {
   addDoc,
   Firestore
 } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  FirebaseStorage
+} from 'firebase/storage';
+import fileConfig from '../../firebase-applet-config.json';
+
+// Resolves configuration with priority to Vite environment variables, falling back to local JSON
+const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
+
+export const resolvedFirebaseConfig = {
+  apiKey: metaEnv?.VITE_FIREBASE_API_KEY || fileConfig.apiKey,
+  authDomain: metaEnv?.VITE_FIREBASE_AUTH_DOMAIN || fileConfig.authDomain,
+  projectId: metaEnv?.VITE_FIREBASE_PROJECT_ID || fileConfig.projectId,
+  storageBucket: metaEnv?.VITE_FIREBASE_STORAGE_BUCKET || fileConfig.storageBucket,
+  messagingSenderId: metaEnv?.VITE_FIREBASE_MESSAGING_SENDER_ID || fileConfig.messagingSenderId,
+  appId: metaEnv?.VITE_FIREBASE_APP_ID || fileConfig.appId,
+  firestoreDatabaseId: metaEnv?.VITE_FIREBASE_FIRESTORE_DATABASE_ID || fileConfig.firestoreDatabaseId,
+  oAuthClientId: metaEnv?.VITE_FIREBASE_OAUTH_CLIENT_ID || fileConfig.oAuthClientId,
+};
 
 // Initialize Firebase App singleton
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const app = !getApps().length ? initializeApp(resolvedFirebaseConfig) : getApp();
 
-// Initialize Firestore with specific databaseId provided in firebase-applet-config.json
+// Initialize Firestore with persistent multi-tab cache and custom database ID
 export const db: Firestore = initializeFirestore(
   app,
   {
@@ -43,18 +66,27 @@ export const db: Firestore = initializeFirestore(
       tabManager: persistentMultipleTabManager()
     })
   },
-  firebaseConfig.firestoreDatabaseId
+  resolvedFirebaseConfig.firestoreDatabaseId
 );
 
-// Initialize Firebase Auth
+// Initialize Firebase Auth with persistent session storage
 export const auth = getAuth(app);
+try {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+} catch {
+  // Graceful fallback in non-browser environments
+}
+
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
+// Initialize Firebase Storage
+export const storage: FirebaseStorage = getStorage(app);
+
 /**
- * Connexion via Google Popup (avec fallback redirect en cas de blocage)
+ * Connexion via Google Popup (avec repli redirection en cas de blocage)
  */
 export const signInWithGoogle = async (): Promise<User | null> => {
   try {
@@ -102,8 +134,13 @@ export const resetUserPassword = async (email: string): Promise<void> => {
  * Connexion Invité / Démonstration (Lecture Seule)
  */
 export const signInAsGuest = async (): Promise<User> => {
-  const result = await signInAnonymously(auth);
-  return result.user;
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (err: any) {
+    console.warn('Anonymous sign in note:', err?.message || err);
+    throw err;
+  }
 };
 
 /**
@@ -124,7 +161,6 @@ export const signOutUser = async (): Promise<void> => {
 };
 
 export {
-  app,
   onAuthStateChanged,
   getRedirectResult,
   signInWithEmailAndPassword,
@@ -140,7 +176,9 @@ export {
   query,
   orderBy,
   limit,
-  addDoc
+  addDoc,
+  storageRef,
+  uploadBytes,
+  getDownloadURL
 };
 export type { User };
-

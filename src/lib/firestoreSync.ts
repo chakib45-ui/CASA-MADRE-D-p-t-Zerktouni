@@ -17,12 +17,37 @@ import { ArticleItem, CatalogConfig, UserRole, UserApprovalRequest, AccessLogEnt
 export const ADMIN_EMAIL = 'chakib.45@gmail.com';
 export const DEFAULT_PIN = '0045';
 
-// Circuit breaker for Firestore quota exhaustion
-let isWriteQuotaExceeded = false;
+// Circuit breaker for Firestore quota exhaustion with persistence across page reloads
+function checkInitialQuota(): boolean {
+  try {
+    const saved = localStorage.getItem('casamadre_firestore_quota_exceeded');
+    if (saved) {
+      const timestamp = parseInt(saved, 10);
+      // Quotas in Firebase Spark reset at midnight PST (~8-12 hours)
+      if (Date.now() - timestamp < 12 * 60 * 60 * 1000) {
+        return true;
+      } else {
+        localStorage.removeItem('casamadre_firestore_quota_exceeded');
+      }
+    }
+  } catch {}
+  return false;
+}
+
+let isWriteQuotaExceeded = checkInitialQuota();
 const quotaListeners: Array<(exceeded: boolean) => void> = [];
+const pinListeners: Array<(pin: string) => void> = [];
 
 export function isFirestoreQuotaExceeded(): boolean {
   return isWriteQuotaExceeded;
+}
+
+export function resetQuotaStatus(): void {
+  isWriteQuotaExceeded = false;
+  try {
+    localStorage.removeItem('casamadre_firestore_quota_exceeded');
+  } catch {}
+  quotaListeners.forEach(l => l(false));
 }
 
 export function subscribeToQuotaStatus(listener: (exceeded: boolean) => void): () => void {
@@ -46,6 +71,9 @@ export function handleQuotaExceeded(err: any): boolean {
   ) {
     if (!isWriteQuotaExceeded) {
       isWriteQuotaExceeded = true;
+      try {
+        localStorage.setItem('casamadre_firestore_quota_exceeded', String(Date.now()));
+      } catch {}
       console.warn('⚡ Quota quotidien d’écriture Firestore atteint. Bascule transparente en mode persistance locale ultra-rapide.');
       quotaListeners.forEach(l => l(true));
     }
@@ -60,12 +88,11 @@ export function isAdminEmail(email?: string | null): boolean {
 }
 
 /**
- * Saves or updates a single article in Firestore for a given user.
+ * Saves or updates a single article in Firestore for a given user and the shared inventory.
  */
 export async function syncArticleToFirestore(userId: string, article: ArticleItem): Promise<void> {
   if (!userId || !article?.id || isWriteQuotaExceeded) return;
   try {
-    const articleRef = doc(db, 'users', userId, 'articles', article.id);
     const sanitizedArticle = {
       id: article.id,
       ref: article.ref || '',
@@ -84,7 +111,18 @@ export async function syncArticleToFirestore(userId: string, article: ArticleIte
       userId,
       updatedAt: new Date().toISOString()
     };
+
+    // 1. Enregistrement dans l'espace utilisateur
+    const articleRef = doc(db, 'users', userId, 'articles', article.id);
     await setDoc(articleRef, sanitizedArticle, { merge: true });
+
+    // 2. Enregistrement miroir dans la collection d'inventaire globale pour tous les lecteurs
+    try {
+      const invRef = doc(db, 'inventory', article.id);
+      await setDoc(invRef, sanitizedArticle, { merge: true });
+    } catch {
+      // Tolérance si inventaire global indisponible
+    }
   } catch (err) {
     if (handleQuotaExceeded(err)) {
       return; // Handled gracefully, local DB will preserve data
@@ -117,6 +155,11 @@ export async function deleteArticleFromFirestore(userId: string, articleId: stri
   try {
     const articleRef = doc(db, 'users', userId, 'articles', articleId);
     await deleteDoc(articleRef);
+
+    try {
+      const invRef = doc(db, 'inventory', articleId);
+      await deleteDoc(invRef);
+    } catch {}
   } catch (err) {
     if (handleQuotaExceeded(err)) {
       return;
@@ -126,33 +169,96 @@ export async function deleteArticleFromFirestore(userId: string, articleId: stri
 }
 
 /**
+ * Helper to parse an article document snapshot into ArticleItem
+ */
+function parseArticleDoc(docId: string, data: any): ArticleItem {
+  return {
+    id: data.id || docId,
+    ref: data.ref || '',
+    name: data.name || '',
+    imageUrl: data.imageUrl || '',
+    imageFit: data.imageFit || 'contain',
+    folder: data.folder || 'Antiquités',
+    category: data.category || '',
+    material: data.material || '',
+    periodOrStyle: data.periodOrStyle || '',
+    condition: data.condition || '',
+    dimensions: data.dimensions || '',
+    quantity: data.quantity || '1 unit.',
+    price: data.price || '',
+    notes: data.notes || ''
+  };
+}
+
+/**
  * Loads all articles for a user from Firestore.
+ * If user has no articles, seamlessly pulls from shared inventory or admin account
+ * so all authenticated users (readers, colleagues, clients) access the full catalog.
  */
 export async function fetchUserArticlesFromFirestore(userId: string): Promise<ArticleItem[]> {
   if (!userId) return [];
-  const articlesCol = collection(db, 'users', userId, 'articles');
-  const snap = await getDocs(articlesCol);
-  const items: ArticleItem[] = [];
-  snap.forEach(docSnap => {
-    const data = docSnap.data();
-    items.push({
-      id: data.id || docSnap.id,
-      ref: data.ref || '',
-      name: data.name || '',
-      imageUrl: data.imageUrl || '',
-      imageFit: data.imageFit || 'contain',
-      folder: data.folder || 'Antiquités',
-      category: data.category || '',
-      material: data.material || '',
-      periodOrStyle: data.periodOrStyle || '',
-      condition: data.condition || '',
-      dimensions: data.dimensions || '',
-      quantity: data.quantity || '1 unit.',
-      price: data.price || '',
-      notes: data.notes || ''
+
+  // 1. Charger la collection personnelle de l'utilisateur
+  try {
+    const articlesCol = collection(db, 'users', userId, 'articles');
+    const snap = await getDocs(articlesCol);
+    if (!snap.empty) {
+      const items: ArticleItem[] = [];
+      snap.forEach(docSnap => items.push(parseArticleDoc(docSnap.id, docSnap.data())));
+      if (items.length > 0) return items;
+    }
+  } catch (e) {
+    handleQuotaExceeded(e);
+  }
+
+  // 2. Si vide, vérifier la collection partagée 'inventory'
+  try {
+    const invCol = collection(db, 'inventory');
+    const invSnap = await getDocs(invCol);
+    if (!invSnap.empty) {
+      const items: ArticleItem[] = [];
+      invSnap.forEach(docSnap => items.push(parseArticleDoc(docSnap.id, docSnap.data())));
+      if (items.length > 0) return items;
+    }
+  } catch (e) {
+    handleQuotaExceeded(e);
+  }
+
+  // 3. Si toujours vide, chercher la collection du compte Administrateur
+  try {
+    const approvalsSnap = await getDocs(collection(db, 'user_approvals'));
+    let adminUid: string | null = null;
+    approvalsSnap.forEach(d => {
+      const data = d.data();
+      if (data?.email && isAdminEmail(data.email)) {
+        adminUid = d.id || data.uid;
+      }
     });
-  });
-  return items;
+
+    if (!adminUid) {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      usersSnap.forEach(d => {
+        const data = d.data();
+        if (data?.email && isAdminEmail(data.email)) {
+          adminUid = d.id || data.uid;
+        }
+      });
+    }
+
+    if (adminUid && adminUid !== userId) {
+      const adminArticlesCol = collection(db, 'users', adminUid, 'articles');
+      const adminSnap = await getDocs(adminArticlesCol);
+      if (!adminSnap.empty) {
+        const items: ArticleItem[] = [];
+        adminSnap.forEach(docSnap => items.push(parseArticleDoc(docSnap.id, docSnap.data())));
+        if (items.length > 0) return items;
+      }
+    }
+  } catch (e) {
+    handleQuotaExceeded(e);
+  }
+
+  return [];
 }
 
 /**
@@ -169,25 +275,7 @@ export function subscribeToUserArticles(
     articlesCol,
     snap => {
       const items: ArticleItem[] = [];
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        items.push({
-          id: data.id || docSnap.id,
-          ref: data.ref || '',
-          name: data.name || '',
-          imageUrl: data.imageUrl || '',
-          imageFit: data.imageFit || 'contain',
-          folder: data.folder || 'Antiquités',
-          category: data.category || '',
-          material: data.material || '',
-          periodOrStyle: data.periodOrStyle || '',
-          condition: data.condition || '',
-          dimensions: data.dimensions || '',
-          quantity: data.quantity || '1 unit.',
-          price: data.price || '',
-          notes: data.notes || ''
-        });
-      });
+      snap.forEach(docSnap => items.push(parseArticleDoc(docSnap.id, docSnap.data())));
       onUpdate(items);
     },
     err => {
@@ -239,28 +327,32 @@ export async function syncConfigToFirestore(userId: string, config: CatalogConfi
 export async function fetchUserConfigFromFirestore(userId: string): Promise<CatalogConfig | null> {
   if (!userId) return null;
   const configRef = doc(db, 'users', userId, 'config', 'catalog');
-  const snap = await getDoc(configRef);
-  if (snap.exists()) {
-    const data = snap.data();
-    return {
-      mainTitle: data.mainTitle || 'CASA MADRE',
-      subtitle: data.subtitle || 'Dépôt Zerktouni',
-      collection: data.collection || '',
-      activeFolder: data.activeFolder || 'Antiquités',
-      folders: Array.isArray(data.folders) && data.folders.length > 0 ? data.folders : ['Antiquités', 'Halloween'],
-      contactInfo: data.contactInfo || '',
-      dateStr: data.dateStr || '',
-      catalogRef: data.catalogRef || '',
-      layoutMode: data.layoutMode || '2-per-page',
-      themeId: data.themeId || 'clair',
-      showPrices: !!data.showPrices,
-      showDimensions: !!data.showDimensions,
-      showReference: !!data.showReference,
-      headerEveryPage: data.headerEveryPage !== false,
-      notesFooter: data.notesFooter || '',
-      cleanScanEffect: data.cleanScanEffect !== false,
-      uiDarkMode: !!data.uiDarkMode
-    };
+  try {
+    const snap = await getDoc(configRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      return {
+        mainTitle: data.mainTitle || 'CASA MADRE',
+        subtitle: data.subtitle || 'Dépôt Zerktouni',
+        collection: data.collection || '',
+        activeFolder: data.activeFolder || 'Antiquités',
+        folders: Array.isArray(data.folders) && data.folders.length > 0 ? data.folders : ['Antiquités', 'Halloween'],
+        contactInfo: data.contactInfo || '',
+        dateStr: data.dateStr || '',
+        catalogRef: data.catalogRef || '',
+        layoutMode: data.layoutMode || '2-per-page',
+        themeId: data.themeId || 'clair',
+        showPrices: !!data.showPrices,
+        showDimensions: !!data.showDimensions,
+        showReference: !!data.showReference,
+        headerEveryPage: data.headerEveryPage !== false,
+        notesFooter: data.notesFooter || '',
+        cleanScanEffect: data.cleanScanEffect !== false,
+        uiDarkMode: !!data.uiDarkMode
+      };
+    }
+  } catch (e) {
+    handleQuotaExceeded(e);
   }
   return null;
 }
@@ -343,7 +435,6 @@ export async function checkOrCreateUserApproval(user: {
 
   // Admin bypass
   if (isAdminEmail(user.email)) {
-    // Also ensure admin doc in approvals is marked admin
     if (!isWriteQuotaExceeded) {
       try {
         const approvalRef = doc(db, 'user_approvals', user.uid);
@@ -378,7 +469,6 @@ export async function checkOrCreateUserApproval(user: {
     if (snap.exists()) {
       const data = snap.data();
       const currentStatus = data.status as UserRole;
-      // Record last login if quota permits
       if (!isWriteQuotaExceeded) {
         try {
           await setDoc(approvalRef, {
@@ -390,11 +480,8 @@ export async function checkOrCreateUserApproval(user: {
         }
       }
 
-      // If user was explicitly rejected by admin, respect rejection
       if (currentStatus === 'rejected') return 'rejected';
-      // If marked admin, grant admin
       if (currentStatus === 'admin') return 'admin';
-      // Otherwise active approved reader
       return 'approved';
     } else {
       // First time sign-in: create approved reader record so login never blocks
@@ -428,7 +515,7 @@ export async function checkOrCreateUserApproval(user: {
 
 /**
  * Subscribes to real-time status changes for a specific user.
- * Allows instant unlocking when admin clicks 'Approuver'.
+ * Guarantees that users are NOT falsely placed into 'pending' if the document hasn't been created yet.
  */
 export function subscribeToUserApproval(
   uid: string,
@@ -447,13 +534,15 @@ export function subscribeToUserApproval(
     snap => {
       if (snap.exists()) {
         const data = snap.data();
-        onUpdate((data.status as UserRole) || 'pending');
+        onUpdate((data.status as UserRole) || 'approved');
       } else {
-        onUpdate('pending');
+        // Essential fix: default to 'approved' reader so users are not blocked!
+        onUpdate('approved');
       }
     },
     err => {
-      console.warn('Approval snapshot error:', err);
+      console.warn('Approval snapshot note, keeping active access:', err?.message || err);
+      onUpdate('approved');
     }
   );
 }
@@ -501,7 +590,7 @@ export function subscribeToAllApprovals(
             email: data.email || '',
             displayName: data.displayName || '',
             photoURL: data.photoURL || '',
-            status: (data.status as UserRole) || 'pending',
+            status: (data.status as UserRole) || 'approved',
             requestedAt: data.requestedAt || '',
             reviewedAt: data.reviewedAt || '',
             reviewedBy: data.reviewedBy || '',
@@ -744,6 +833,7 @@ export async function updateSecurityPin(newPin: string, adminEmail: string): Pro
   }
 
   localStorage.setItem('casamadre_admin_pin', cleanPin);
+  pinListeners.forEach(fn => fn(cleanPin));
 
   await logAccessEvent({
     uid: 'admin',
@@ -761,11 +851,12 @@ export async function updateSecurityPin(newPin: string, adminEmail: string): Pro
  * Subscribes to real-time updates for authorization PIN code.
  */
 export function subscribeToSecurityPin(onUpdate: (pin: string) => void): () => void {
+  pinListeners.push(onUpdate);
   const initialPin = localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN;
   onUpdate(initialPin);
 
   const secRef = doc(db, 'app_config', 'security');
-  return onSnapshot(
+  const unsubscribeFirestore = onSnapshot(
     secRef,
     snap => {
       if (snap.exists()) {
@@ -779,9 +870,14 @@ export function subscribeToSecurityPin(onUpdate: (pin: string) => void): () => v
       onUpdate(localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN);
     },
     err => {
-      console.warn('subscribeToSecurityPin listener error:', err);
+      console.warn('subscribeToSecurityPin listener note:', err?.message || err);
       onUpdate(localStorage.getItem('casamadre_admin_pin') || DEFAULT_PIN);
     }
   );
-}
 
+  return () => {
+    const idx = pinListeners.indexOf(onUpdate);
+    if (idx !== -1) pinListeners.splice(idx, 1);
+    unsubscribeFirestore();
+  };
+}

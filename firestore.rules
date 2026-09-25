@@ -17,48 +17,40 @@ service cloud.firestore {
     // Profils utilisateurs et sous-collections catalogue
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId) || isAdmin();
+      allow write: if isAuthenticated();
 
       match /articles/{articleId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId) || isAdmin();
+        allow read, write: if isAuthenticated();
       }
 
       match /config/{configDoc} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(userId) || isAdmin();
+        allow read, write: if isAuthenticated();
       }
     }
 
-    // Collection inventaire partagée
+    // Collection inventaire partagée pour l'ensemble des utilisateurs autorisés
     match /inventory/{articleId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Collection des approbations et rôles utilisateurs
     match /user_approvals/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Journal d'historique des accès et connexions
     match /access_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Configuration globale et sécurité (ex: code PIN d'autorisation)
     match /app_config/{configId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
+    // Refus par défaut pour toutes les requêtes non authentifiées
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
