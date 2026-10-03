@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { optimizeImageFile, isImageFile, extractFilesFromDataTransfer } from '../utils/imageOptimizer';
+import { playCameraShutterSound, playAlertNotificationSound } from '../utils/audioFeedback';
 
 export interface BatchItem {
   id: string;
@@ -121,11 +122,13 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
       }
 
       if (newItems.length === 0) {
+        playAlertNotificationSound();
         setUploadError("Impossible de charger les images sélectionnées. Vérifiez que les fichiers ne sont pas corrompus.");
         setIsCompressing(false);
         return;
       }
 
+      playCameraShutterSound();
       setSelectedItems(prev => [...prev, ...newItems]);
       setIsCompressing(false);
 

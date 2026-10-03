@@ -1,5 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { KeyRound, X, Check, ShieldAlert, Lock, Eye, EyeOff } from 'lucide-react';
+import { 
+  KeyRound, 
+  X, 
+  Check, 
+  ShieldAlert, 
+  Eye, 
+  EyeOff, 
+  Phone, 
+  MessageSquare, 
+  Mail, 
+  HelpCircle,
+  Smartphone
+} from 'lucide-react';
+import { playClickSound, playSuccessSound, playAlertNotificationSound } from '../utils/audioFeedback';
 
 interface PinModalProps {
   isOpen: boolean;
@@ -19,6 +32,7 @@ export const PinModal: React.FC<PinModalProps> = ({
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetPin = (expectedPin || '0045').trim();
@@ -28,6 +42,7 @@ export const PinModal: React.FC<PinModalProps> = ({
       setPin('');
       setError(null);
       setShowPin(false);
+      setShowRecovery(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
@@ -38,38 +53,50 @@ export const PinModal: React.FC<PinModalProps> = ({
     if (e) e.preventDefault();
     if (pin.trim() === targetPin) {
       setError(null);
+      playSuccessSound();
       onSuccess();
       onClose();
     } else {
+      playAlertNotificationSound();
       setError('Code d’autorisation incorrect. Accès refusé.');
+      setShowRecovery(true);
       setPin('');
       inputRef.current?.focus();
     }
   };
 
   const handleDigitClick = (digit: string) => {
+    playClickSound();
     if (pin.length < 8) {
       const nextPin = pin + digit;
       setPin(nextPin);
       setError(null);
       if (nextPin === targetPin) {
+        playSuccessSound();
         onSuccess();
         onClose();
       } else if (nextPin.length >= targetPin.length && nextPin !== targetPin) {
+        playAlertNotificationSound();
         setError('Code d’autorisation incorrect. Accès refusé.');
+        setShowRecovery(true);
       }
     }
   };
 
   const handleBackspace = () => {
+    playClickSound();
     setPin(prev => prev.slice(0, -1));
     setError(null);
   };
 
+  const smsLink = `sms:+212662027271?body=Bonjour%20Chakib,%20merci%20de%20me%20transmettre%20le%20code%20PIN%20d'autorisation%20CASA%20MADRE%20pour%20ce%20poste.`;
+  const whatsappLink = `https://wa.me/212662027271?text=Bonjour%20Chakib,%20merci%20de%20me%20transmettre%20le%20code%20PIN%20d'autorisation%20CASA%20MADRE%20pour%20ce%20poste.`;
+  const emailLink = `mailto:chakib.45@gmail.com?subject=Demande%20Code%20PIN%20CASA%20MADRE&body=Bonjour%20Chakib,%20merci%20de%20me%20transmettre%20le%20code%20PIN%20d'autorisation%20pour%20ce%20poste.`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs select-none">
       <div 
-        className="w-full max-w-sm bg-[#241c17] text-[#f7f5f0] border border-[#524133] rounded-2xl p-6 shadow-2xl relative animate-in fade-in-50 zoom-in-95 duration-150"
+        className="w-full max-w-sm bg-[#241c17] text-[#f7f5f0] border border-[#524133] rounded-2xl p-6 shadow-2xl relative animate-in fade-in-50 zoom-in-95 duration-150 max-h-[95vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
       >
@@ -121,6 +148,7 @@ export const PinModal: React.FC<PinModalProps> = ({
                 setPin(val);
                 setError(null);
                 if (val === targetPin) {
+                  playSuccessSound();
                   onSuccess();
                   onClose();
                 }
@@ -174,7 +202,73 @@ export const PinModal: React.FC<PinModalProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-[#3d2f25] text-xs">
+        {/* Option de secours d'authentification (SMS / WhatsApp / Admin) */}
+        <div className="mt-4 pt-3 border-t border-[#3d2f25]">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={() => setShowRecovery(!showRecovery)}
+              className="flex items-center gap-1.5 text-[11px] text-[#c4a482] hover:text-[#e4c9ad] transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>{showRecovery ? 'Masquer secours' : 'Code oublié ou nouveau poste ?'}</span>
+            </button>
+            <span className="text-[10px] text-stone-400 font-mono">Défaut: 0045</span>
+          </div>
+
+          {showRecovery && (
+            <div className="p-3 bg-[#19130f] border border-[#4a3a2d] rounded-xl text-left space-y-2.5 animate-in fade-in-50 duration-150">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="text-[11px] text-[#e8ded3]">
+                  <p className="font-semibold text-white">Contact Propriétaire / Super-Admin :</p>
+                  <p className="text-[#c4a482]">Chakib • 06 62 02 72 71</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[10.5px]">
+                <a
+                  href={smsLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#2f2219] hover:bg-[#3d2d21] border border-[#5a4332] text-amber-200 transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3 text-amber-300" />
+                  <span>Secours par SMS</span>
+                </a>
+
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-200 transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3 text-emerald-300" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href="tel:+212662027271"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#291e17] hover:bg-[#382b22] border border-[#4d3d32] text-stone-200 transition-colors"
+                >
+                  <Phone className="w-3 h-3 text-[#c4a482]" />
+                  <span>06 62 02 72 71</span>
+                </a>
+
+                <a
+                  href={emailLink}
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#291e17] hover:bg-[#382b22] border border-[#4d3d32] text-stone-200 transition-colors truncate"
+                  title="chakib.45@gmail.com"
+                >
+                  <Mail className="w-3 h-3 text-[#c4a482]" />
+                  <span>Envoyer un E-mail</span>
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-[#3d2f25] text-xs mt-3">
           <button
             type="button"
             onClick={onClose}

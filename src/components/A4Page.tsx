@@ -90,7 +90,7 @@ export const A4Page: React.FC<A4PageProps> = ({
 
   return (
     <div
-      className="print-page relative box-border mx-auto overflow-hidden shadow-2xl flex flex-col justify-between"
+      className="print-page relative box-border mx-auto overflow-hidden flex flex-col justify-between"
       style={{
         width: '210mm',
         height: '297mm',

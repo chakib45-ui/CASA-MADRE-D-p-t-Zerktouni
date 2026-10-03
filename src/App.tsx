@@ -24,12 +24,14 @@ import { exportCatalogToPDF, printCatalogViaBrowser } from './utils/pdfExport';
 import { exportCatalogToExcel } from './utils/excelExport';
 import { getStoredItem, setStoredItem, migrateFromLocalStorage, repairAndSyncLibrary } from './utils/storage';
 import { isImageFile, extractFilesFromDataTransfer } from './utils/imageOptimizer';
+import { playSuccessSound, playExportSound, playClickSound, playAlertNotificationSound } from './utils/audioFeedback';
 import { 
   auth, 
   signInWithGoogle, 
   signOutUser, 
   onAuthStateChanged,
-  checkRedirectResult
+  checkRedirectResult,
+  resolvedFirebaseConfig
 } from './lib/firebase';
 import { 
   syncUserProfile, 
@@ -60,9 +62,20 @@ export default function App() {
   const [config, setConfig] = useState<CatalogConfig>(DEFAULT_CONFIG);
   const isLoadedRef = useRef(false);
 
-  // Firebase Auth state & Sync status
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  // Firebase Auth state & Sync status with instant cached session recovery
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('casamadre_auth_user');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(() => {
+    try {
+      if (localStorage.getItem('casamadre_auth_user')) return false;
+    } catch {}
+    return false;
+  });
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error' | 'quota_exceeded'>('offline');
   const userRef = useRef<UserProfile | null>(null);
   userRef.current = currentUser;
@@ -81,6 +94,7 @@ export default function App() {
   const [pinActionTitle, setPinActionTitle] = useState('Modification du catalogue');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isPinUnlocked, setIsPinUnlocked] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'inventory' | 'preview'>('inventory');
 
   const isAdmin = userRole === 'admin' || (currentUser?.email ? isAdminEmail(currentUser.email) : false);
 
@@ -96,6 +110,7 @@ export default function App() {
 
   const handlePinSuccess = () => {
     setIsPinUnlocked(true);
+    playSuccessSound();
     showToast("Code d'autorisation validé : Mode modification déverrouillé");
     if (currentUser) {
       logAccessEvent({
@@ -145,7 +160,25 @@ export default function App() {
 
   // Check redirect result on mount (for mobile Google Sign-In)
   useEffect(() => {
-    checkRedirectResult().catch(err => console.warn('Redirect check error:', err));
+    checkRedirectResult().then((user) => {
+      if (user) {
+        const isUserAdmin = isAdminEmail(user.email);
+        const profile: UserProfile = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'Lecteur'),
+          photoURL: user.photoURL,
+          role: isUserAdmin ? 'admin' : 'approved'
+        };
+        setCurrentUser(profile);
+        userRef.current = profile;
+        setUserRole(profile.role);
+        setIsAuthLoading(false);
+        try {
+          localStorage.setItem('casamadre_auth_user', JSON.stringify(profile));
+        } catch {}
+      }
+    }).catch(err => console.warn('Redirect check note:', err));
   }, []);
 
   // Real-time synchronization of authorization PIN
@@ -162,9 +195,13 @@ export default function App() {
     let unsubscribeMyApproval: (() => void) | null = null;
     let unsubscribeLogs: (() => void) | null = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setIsAuthLoading(true);
-      setAuthError(null);
+    // Safety timer to guarantee the loading spinner never spins indefinitely
+    const safetyTimer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 3500);
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      clearTimeout(safetyTimer);
 
       if (unsubscribeApprovals) {
         unsubscribeApprovals();
@@ -188,26 +225,30 @@ export default function App() {
           photoURL: user.photoURL,
           role: isUserAdmin ? 'admin' : 'approved'
         };
+
+        // 1. IMMEDIATELY update user profile & dismiss loading spinner
         setCurrentUser(profile);
         userRef.current = profile;
-
+        setUserRole(profile.role);
+        setIsAuthLoading(false);
+        setAuthError(null);
         try {
-          // Record/update user doc in Firestore only if quota permits
-          if (!isFirestoreQuotaExceeded()) {
-            await syncUserProfile(profile);
-          }
+          localStorage.setItem('casamadre_auth_user', JSON.stringify(profile));
+        } catch {}
 
-          // Check or create approval request in Firestore
-          const role = await checkOrCreateUserApproval(profile);
-          setUserRole(role);
-          profile.role = role;
-          setCurrentUser({ ...profile });
+        // 2. Perform background synchronization without blocking UI responsiveness
+        (async () => {
+          try {
+            // Check approval request in Firestore (read-only)
+            const role = await checkOrCreateUserApproval(profile);
+            setUserRole(role);
+            profile.role = role;
+            setCurrentUser(prev => prev ? { ...prev, role } : profile);
 
-          // Log access event once per session only if quota permits
-          const sessionLoggedKey = `casamadre_session_login_${user.uid}`;
-          if (!sessionStorage.getItem(sessionLoggedKey)) {
-            sessionStorage.setItem(sessionLoggedKey, '1');
-            if (!isFirestoreQuotaExceeded()) {
+            // Log access event locally
+            const sessionLoggedKey = `casamadre_session_login_${user.uid}`;
+            if (!sessionStorage.getItem(sessionLoggedKey)) {
+              sessionStorage.setItem(sessionLoggedKey, '1');
               await logAccessEvent({
                 uid: user.uid,
                 email: user.email,
@@ -217,62 +258,56 @@ export default function App() {
                 details: `Connexion (${role === 'admin' ? 'Administrateur' : 'Lecteur'})`
               });
             }
-          }
 
-          // Subscribe to access logs
-          unsubscribeLogs = subscribeToAccessLogs((logs) => {
-            setAccessLogs(logs);
-          });
-
-          if (role === 'admin' || isUserAdmin) {
-            // Admin: subscribe to all user approval requests for real-time dashboard
-            unsubscribeApprovals = subscribeToAllApprovals((reqs) => {
-              setApprovalRequests(reqs);
+            // Subscribe to access logs
+            unsubscribeLogs = subscribeToAccessLogs((logs) => {
+              setAccessLogs(logs);
             });
-          } else {
-            // Reader: subscribe to own status update so changes are reflected in real-time
-            unsubscribeMyApproval = subscribeToUserApproval(user.uid, user.email, (newStatus) => {
-              setUserRole(newStatus);
-              setCurrentUser(prev => prev ? { ...prev, role: newStatus } : null);
-              if (newStatus === 'rejected') {
-                showToast('Votre accès a été restreint par l’administrateur.');
-              }
-            });
-          }
 
-          // Fetch remote articles and config if approved or admin
-          if (role === 'admin' || role === 'approved' || isUserAdmin) {
-            setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'syncing');
-            try {
-              const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
-              const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
-
-              if (remoteArticles && remoteArticles.length > 0) {
-                setArticles(remoteArticles);
-                await setStoredItem('casamadre_articles', remoteArticles);
-              }
-
-              if (remoteConfig) {
-                setConfig(remoteConfig);
-                await setStoredItem('casamadre_config', remoteConfig);
-              }
-            } catch (fetchErr) {
-              console.warn('Note reading remote articles (using local DB):', fetchErr);
+            if (role === 'admin' || isUserAdmin) {
+              // Admin: subscribe to all user approval requests for real-time dashboard
+              unsubscribeApprovals = subscribeToAllApprovals((reqs) => {
+                setApprovalRequests(reqs);
+              });
+            } else {
+              // Reader: subscribe to own status update so changes are reflected in real-time
+              unsubscribeMyApproval = subscribeToUserApproval(user.uid, user.email, (newStatus) => {
+                setUserRole(newStatus);
+                setCurrentUser(prev => prev ? { ...prev, role: newStatus } : null);
+                if (newStatus === 'rejected') {
+                  showToast('Votre accès a été restreint par l’administrateur.');
+                }
+              });
             }
 
-            setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'synced');
-            showToast((role === 'admin' || isUserAdmin)
-              ? `Bienvenue Administrateur : ${user.displayName || user.email}`
-              : `Bienvenue : ${user.displayName || user.email || 'Lecteur'}`
-            );
+            // Fetch remote articles and config if approved or admin
+            if (role === 'admin' || role === 'approved' || isUserAdmin) {
+              setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'syncing');
+              try {
+                const remoteArticles = await fetchUserArticlesFromFirestore(user.uid);
+                const remoteConfig = await fetchUserConfigFromFirestore(user.uid);
+
+                if (remoteArticles && remoteArticles.length > 0) {
+                  setArticles(remoteArticles);
+                  await setStoredItem('casamadre_articles', remoteArticles);
+                }
+
+                if (remoteConfig) {
+                  setConfig(remoteConfig);
+                  await setStoredItem('casamadre_config', remoteConfig);
+                }
+              } catch (fetchErr) {
+                console.warn('Note reading remote articles (using local DB):', fetchErr);
+              }
+
+              setSyncStatus(isFirestoreQuotaExceeded() ? 'quota_exceeded' : 'synced');
+            }
+          } catch (err: any) {
+            console.warn('Background auth sync note:', err);
           }
-        } catch (err: any) {
-          console.error('Error on auth login sync:', err);
-          setSyncStatus('error');
-        } finally {
-          setIsAuthLoading(false);
-        }
+        })();
       } else {
+        // User is not signed in
         setCurrentUser(null);
         userRef.current = null;
         setUserRole('pending');
@@ -280,10 +315,14 @@ export default function App() {
         setIsPinUnlocked(false);
         setSyncStatus('offline');
         setIsAuthLoading(false);
+        try {
+          localStorage.removeItem('casamadre_auth_user');
+        } catch {}
       }
     });
 
     return () => {
+      clearTimeout(safetyTimer);
       unsubscribeAuth();
       if (unsubscribeApprovals) unsubscribeApprovals();
       if (unsubscribeMyApproval) unsubscribeMyApproval();
@@ -291,31 +330,64 @@ export default function App() {
     };
   }, []);
 
-  // Google sign in / out handlers
+  // Google sign in / out handlers with immediate UI feedback
   const handleSignIn = async () => {
     try {
       setIsAuthLoading(true);
       setAuthError(null);
-      await signInWithGoogle();
+      const googleUser = await signInWithGoogle();
+      if (googleUser) {
+        const isUserAdmin = isAdminEmail(googleUser.email);
+        const profile: UserProfile = {
+          uid: googleUser.uid,
+          email: googleUser.email,
+          displayName: googleUser.displayName || (googleUser.email ? googleUser.email.split('@')[0] : 'Lecteur'),
+          photoURL: googleUser.photoURL,
+          role: isUserAdmin ? 'admin' : 'approved'
+        };
+        // Update auth state immediately!
+        setCurrentUser(profile);
+        userRef.current = profile;
+        setUserRole(profile.role);
+        setIsAuthLoading(false);
+        try {
+          localStorage.setItem('casamadre_auth_user', JSON.stringify(profile));
+        } catch {}
+        playSuccessSound();
+        showToast(isUserAdmin 
+          ? `Bienvenue Administrateur : ${profile.displayName}` 
+          : `Bienvenue : ${profile.displayName}`
+        );
+      }
     } catch (err: any) {
       console.error('Google Sign In Error:', err);
       setIsAuthLoading(false);
-      setAuthError('Échec de connexion Google. Veuillez réessayer.');
-      showToast('Échec de connexion Google. Veuillez réessayer.');
+      if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+        setAuthError('Échec de la connexion Google. Veuillez réessayer.');
+        showToast('Échec de la connexion Google. Veuillez réessayer.');
+      }
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
   const handleSignOut = async () => {
     try {
+      setIsAuthLoading(true);
       await signOutUser();
       setCurrentUser(null);
       userRef.current = null;
       setUserRole('pending');
       setIsPinUnlocked(false);
       setSyncStatus('offline');
+      try {
+        localStorage.removeItem('casamadre_auth_user');
+      } catch {}
       showToast('Déconnexion réussie');
     } catch (err) {
       console.error('Sign Out Error:', err);
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -535,6 +607,7 @@ export default function App() {
   };
 
   const showToast = (msg: string) => {
+    playAlertNotificationSound();
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
@@ -770,6 +843,7 @@ export default function App() {
     if (currentUser?.uid) {
       syncArticleToFirestore(currentUser.uid, duplicated).catch(console.warn);
     }
+    playSuccessSound();
     showToast(`Article dupliqué : ${duplicated.name}`);
   };
 
@@ -781,6 +855,7 @@ export default function App() {
         console.error('Error deleting from Firestore:', err);
       });
     }
+    playClickSound();
     showToast('Article retiré de l\'inventaire');
   };
 
@@ -792,6 +867,7 @@ export default function App() {
         console.error('Error saving article to Firestore:', err);
       });
     }
+    playSuccessSound();
     showToast(`Fiche "${updated.name}" mise à jour`);
   };
 
@@ -804,6 +880,7 @@ export default function App() {
       });
     }
     const targetFolder = newArticles[0]?.folder || activeFolder;
+    playSuccessSound();
     showToast(`${newArticles.length} article(s) enregistré(s) dans le dossier « ${targetFolder} »`);
   };
 
@@ -813,6 +890,7 @@ export default function App() {
     if (currentUser?.uid) {
       syncArticleToFirestore(currentUser.uid, newArticle).catch(console.warn);
     }
+    playSuccessSound();
     showToast(`Photo capturée et ajoutée au dossier « ${newArticle.folder} »`);
   };
 
@@ -836,6 +914,7 @@ export default function App() {
     };
     setArticles([...articles, newArticle]);
     setEditingArticle(newArticle);
+    playSuccessSound();
   };
 
   // Reset to default
@@ -864,6 +943,14 @@ export default function App() {
     }
     showToast(`Bibliothèque réparée : ${res.restoredCount} article(s) synchronisé(s)`);
     return { restoredCount: res.restoredCount, info: res.info };
+  };
+
+  const handleImportBackup = (newArticles: ArticleItem[], newConfig?: CatalogConfig) => {
+    setArticles(newArticles);
+    if (newConfig) {
+      setConfig(newConfig);
+    }
+    showToast(`${newArticles.length} article(s) importés et restaurés sur ce poste`);
   };
 
   // Trigger export flow
@@ -916,6 +1003,7 @@ export default function App() {
           }
         );
       }
+      playExportSound();
       showToast('Document PDF téléchargé avec succès !');
     } catch (err: any) {
       console.error('Erreur export PDF', err);
@@ -933,6 +1021,7 @@ export default function App() {
       } else {
         exportCatalogToExcel(articles, config, 'all');
       }
+      playExportSound();
       showToast('Fichier Excel (.xlsx) téléchargé avec succès !');
     } catch (err: any) {
       console.error('Erreur export Excel', err);
@@ -1011,12 +1100,12 @@ export default function App() {
               Tester la synchro
             </button>
             <a
-              href="https://console.firebase.google.com/project/imperial-being-mlkcn/firestore/databases/ai-studio-casamadreinventa-b826feac-7a37-42a9-89c9-35f5a72f587d/data?openUpgradeDialog=true"
+              href={`https://console.firebase.google.com/project/${resolvedFirebaseConfig.projectId}/firestore`}
               target="_blank"
               rel="noreferrer"
               className="text-amber-400 underline hover:text-amber-300 font-semibold"
             >
-              Activer Blaze / Gérer les quotas &rarr;
+              Gérer la base Firestore &rarr;
             </a>
           </div>
         </div>
@@ -1070,56 +1159,131 @@ export default function App() {
         onToggleSidebar={() => setIsSidebarVisible(prev => !prev)}
       />
 
-      {/* Main Workspace: Left Sidebar + Right A4 Viewer */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Sidebar (Peut être masquée ou montrée) */}
-        {isSidebarVisible && (
-          <InventorySidebar
-            articles={articles}
-            folders={folders}
-            activeFolder={activeFolder}
-            onChangeFolder={handleSelectFolder}
-            onOpenNewFolder={() => executeWithPinProtection(() => setIsFolderCreateOpen(true), "Créer un nouveau dossier")}
-            globalSearch={globalSearch}
-            onClearGlobalSearch={() => setGlobalSearch('')}
-            onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
-            onViewImage={setViewingImageArticle}
-            onMoveArticle={(index, direction) => executeWithPinProtection(() => handleMoveArticle(index, direction), "Déplacer l'article")}
-            onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
-            onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
-            onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
-            onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
-            onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
-            onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
-            onToggleSidebar={() => setIsSidebarVisible(false)}
-          />
-        )}
-
-        {/* Bouton d'accès rapide pour ré-afficher la liste si elle est masquée */}
-        {!isSidebarVisible && (
+      {/* Mobile Tab Switcher (< md) */}
+      <div className="md:hidden bg-[#241c17] border-b border-[#382b21] px-3 py-1.5 flex items-center justify-center select-none no-print">
+        <div className="flex rounded-xl bg-[#150f0c] p-1 border border-[#382b21] w-full max-w-sm shadow-inner">
           <button
             type="button"
-            onClick={() => setIsSidebarVisible(true)}
-            title="Montrer la liste des articles"
-            className="absolute left-3 top-3 z-30 px-3 py-1.5 bg-[#8c6239] hover:bg-[#734f2d] text-white rounded shadow-md border border-[#aa7a4a] flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all hover:scale-105 select-none no-print"
+            onClick={() => {
+              playClickSound();
+              setMobileTab('inventory');
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === 'inventory'
+                ? 'bg-gradient-to-r from-[#8c6239] to-[#734f2d] text-white shadow-xs'
+                : 'text-[#c4b5a5] hover:text-white'
+            }`}
           >
-            <PanelLeftOpen className="w-3.5 h-3.5 text-white" />
-            <span>Montrer la liste</span>
+            <span>🏺 Catalogue</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+              {displayedArticles.length}
+            </span>
           </button>
-        )}
+          <button
+            type="button"
+            onClick={() => {
+              playClickSound();
+              setMobileTab('preview');
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === 'preview'
+                ? 'bg-gradient-to-r from-[#8c6239] to-[#734f2d] text-white shadow-xs'
+                : 'text-[#c4b5a5] hover:text-white'
+            }`}
+          >
+            <span>📄 Aperçu A4</span>
+          </button>
+        </div>
+      </div>
 
-        {/* Live A4 Sheet Preview */}
-        <CatalogPreview
-          articles={displayedArticles}
-          config={config}
-          globalSearch={globalSearch}
-          onClearGlobalSearch={() => setGlobalSearch('')}
-          onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
-          onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
-          onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
-          onViewImage={setViewingImageArticle}
-          onOpenPrintModal={() => setIsPrintModalOpen(true)}
-        />
+      {/* Main Workspace (Desktop : 2 Colonnes | Mobile : 1 Colonne Commutable) */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Desktop View (>= md) : Deux Colonnes */}
+        <div className="hidden md:flex flex-1 overflow-hidden relative">
+          {/* Sidebar */}
+          {isSidebarVisible && (
+            <InventorySidebar
+              articles={articles}
+              folders={folders}
+              activeFolder={activeFolder}
+              onChangeFolder={handleSelectFolder}
+              onOpenNewFolder={() => executeWithPinProtection(() => setIsFolderCreateOpen(true), "Créer un nouveau dossier")}
+              globalSearch={globalSearch}
+              onClearGlobalSearch={() => setGlobalSearch('')}
+              onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
+              onViewImage={setViewingImageArticle}
+              onMoveArticle={(index, direction) => executeWithPinProtection(() => handleMoveArticle(index, direction), "Déplacer l'article")}
+              onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
+              onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
+              onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+              onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+              onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
+              onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
+              onToggleSidebar={() => setIsSidebarVisible(false)}
+            />
+          )}
+
+          {!isSidebarVisible && (
+            <button
+              type="button"
+              onClick={() => setIsSidebarVisible(true)}
+              title="Montrer la liste des articles"
+              className="absolute left-3 top-3 z-30 px-3 py-1.5 bg-[#8c6239] hover:bg-[#734f2d] text-white rounded shadow-md border border-[#aa7a4a] flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all hover:scale-105 select-none no-print"
+            >
+              <PanelLeftOpen className="w-3.5 h-3.5 text-white" />
+              <span>Montrer la liste</span>
+            </button>
+          )}
+
+          <CatalogPreview
+            articles={displayedArticles}
+            config={config}
+            globalSearch={globalSearch}
+            onClearGlobalSearch={() => setGlobalSearch('')}
+            onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+            onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+            onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
+            onViewImage={setViewingImageArticle}
+            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+          />
+        </div>
+
+        {/* Mobile View (< md) : Une Colonne Fluide & Commutable */}
+        <div className="flex md:hidden flex-1 overflow-hidden relative">
+          {mobileTab === 'inventory' ? (
+            <InventorySidebar
+              articles={articles}
+              folders={folders}
+              activeFolder={activeFolder}
+              onChangeFolder={handleSelectFolder}
+              onOpenNewFolder={() => executeWithPinProtection(() => setIsFolderCreateOpen(true), "Créer un nouveau dossier")}
+              globalSearch={globalSearch}
+              onClearGlobalSearch={() => setGlobalSearch('')}
+              onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
+              onViewImage={setViewingImageArticle}
+              onMoveArticle={(index, direction) => executeWithPinProtection(() => handleMoveArticle(index, direction), "Déplacer l'article")}
+              onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
+              onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
+              onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+              onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+              onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
+              onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
+              isMobileView={true}
+            />
+          ) : (
+            <CatalogPreview
+              articles={displayedArticles}
+              config={config}
+              globalSearch={globalSearch}
+              onClearGlobalSearch={() => setGlobalSearch('')}
+              onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+              onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
+              onSelectArticle={(article) => executeWithPinProtection(() => setEditingArticle(article), "Modifier l'article")}
+              onViewImage={setViewingImageArticle}
+              onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Folder Modals */}
@@ -1236,6 +1400,8 @@ export default function App() {
         config={config}
         onSave={setConfig}
         onRepairLibrary={handleRepairLibrary}
+        articles={articles}
+        onImportBackup={handleImportBackup}
       />
 
       {/* Authorization PIN Modal for modifications */}

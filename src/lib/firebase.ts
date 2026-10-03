@@ -17,8 +17,8 @@ import {
 } from 'firebase/auth';
 import { 
   initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager,
+  memoryLocalCache,
+  setLogLevel,
   collection,
   doc,
   setDoc,
@@ -58,16 +58,35 @@ export const resolvedFirebaseConfig = {
 // Initialize Firebase App singleton
 export const app = !getApps().length ? initializeApp(resolvedFirebaseConfig) : getApp();
 
-// Initialize Firestore with persistent multi-tab cache and custom database ID
-export const db: Firestore = initializeFirestore(
-  app,
-  {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  },
-  resolvedFirebaseConfig.firestoreDatabaseId
-);
+// Clean up stale Firestore IndexedDB cache that may retain uncommitted write mutation retries
+if (typeof window !== 'undefined' && 'indexedDB' in window) {
+  try {
+    const dbPrefix = `firestore/[DEFAULT]/${resolvedFirebaseConfig.projectId}`;
+    ['main', resolvedFirebaseConfig.firestoreDatabaseId].forEach(sub => {
+      try {
+        indexedDB.deleteDatabase(`${dbPrefix}/${sub}/main`);
+        indexedDB.deleteDatabase(`${dbPrefix}/${sub}`);
+      } catch {}
+    });
+    try {
+      indexedDB.deleteDatabase(dbPrefix);
+    } catch {}
+  } catch {}
+}
+
+// Initialize Firestore with in-memory cache to prevent background offline retry storms
+const targetDatabaseId = resolvedFirebaseConfig.firestoreDatabaseId && resolvedFirebaseConfig.firestoreDatabaseId !== '(default)'
+  ? resolvedFirebaseConfig.firestoreDatabaseId
+  : undefined;
+
+export const db: Firestore = targetDatabaseId
+  ? initializeFirestore(app, { localCache: memoryLocalCache() }, targetDatabaseId)
+  : initializeFirestore(app, { localCache: memoryLocalCache() });
+
+// Suppress internal Firestore connection retry logs and backoff delay warnings
+try {
+  setLogLevel('silent');
+} catch {}
 
 // Initialize Firebase Auth with persistent session storage
 export const auth = getAuth(app);

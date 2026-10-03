@@ -12,6 +12,7 @@ import {
   ZapOff
 } from 'lucide-react';
 import { ArticleItem } from '../types';
+import { playCameraShutterSound } from '../utils/audioFeedback';
 
 interface CameraCaptureModalProps {
   isOpen: boolean;
@@ -163,6 +164,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   const capturePhoto = () => {
     if (!videoRef.current) return;
+    playCameraShutterSound();
     setIsCapturing(true);
 
     const video = videoRef.current;

@@ -208,3 +208,112 @@ export async function migrateFromLocalStorage(): Promise<ArticleItem[] | null> {
   }
   return null;
 }
+
+/**
+ * Exports complete application database (all articles with images + configuration)
+ * as a portable JSON file for easy transfer to a new machine or backup.
+ */
+export function exportDatabaseBackup(articles: ArticleItem[], config: CatalogConfig): void {
+  const exportPayload = {
+    app: 'CASA MADRE - Dépôt Zerktouni',
+    version: '2.0',
+    exportDate: new Date().toISOString(),
+    totalArticles: articles.length,
+    config,
+    articles,
+  };
+
+  const jsonStr = JSON.stringify(exportPayload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const dateSuffix = new Date().toISOString().split('T')[0];
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `casamadre-sauvegarde-inventaire-${dateSuffix}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Imports a database backup file on a new computer or server,
+ * restoring all articles, images, and configuration into local IndexedDB storage.
+ */
+export function importDatabaseBackup(
+  file: File
+): Promise<{ success: boolean; articles: ArticleItem[]; config?: CatalogConfig; message: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        if (!text) {
+          throw new Error('Fichier vide ou illisible.');
+        }
+        const parsed = JSON.parse(text);
+
+        const articlesList: any[] = Array.isArray(parsed.articles)
+          ? parsed.articles
+          : Array.isArray(parsed)
+            ? parsed
+            : [];
+
+        if (articlesList.length === 0) {
+          throw new Error('Le fichier de sauvegarde ne contient aucun article valide.');
+        }
+
+        const sanitizedArticles: ArticleItem[] = articlesList.map((art: any, idx: number) => ({
+          id: art.id || `restored-art-${Date.now()}-${idx}`,
+          ref: art.ref || '',
+          name: (art.name && art.name.trim()) ? art.name.trim() : `Article restauré #${idx + 1}`,
+          imageUrl: art.imageUrl || '',
+          imageFit: art.imageFit === 'cover' ? 'cover' : 'contain',
+          folder: art.folder || 'Antiquités',
+          category: art.category || 'Mobilier & Décoration',
+          material: art.material || '',
+          periodOrStyle: art.periodOrStyle || '',
+          condition: art.condition || '',
+          dimensions: art.dimensions || '',
+          quantity: art.quantity || '1',
+          price: art.price || '',
+          notes: art.notes || '',
+        }));
+
+        await setStoredItem('casamadre_articles', sanitizedArticles);
+
+        let restoredConfig: CatalogConfig | undefined = undefined;
+        if (parsed.config && typeof parsed.config === 'object') {
+          restoredConfig = parsed.config as CatalogConfig;
+          await setStoredItem('casamadre_config', restoredConfig);
+        }
+
+        // Safety lightweight copy
+        try {
+          const miniCopy = sanitizedArticles.map(a => ({
+            id: a.id,
+            name: a.name,
+            folder: a.folder,
+            ref: a.ref,
+            quantity: a.quantity,
+            price: a.price,
+            imageUrl: a.imageUrl?.startsWith('data:') ? '' : a.imageUrl,
+          }));
+          localStorage.setItem('casamadre_articles_manifest', JSON.stringify(miniCopy));
+        } catch {}
+
+        resolve({
+          success: true,
+          articles: sanitizedArticles,
+          config: restoredConfig,
+          message: `${sanitizedArticles.length} article(s) restaurés avec succès sur cette nouvelle machine.`,
+        });
+      } catch (err: any) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier.'));
+    reader.readAsText(file);
+  });
+}
+

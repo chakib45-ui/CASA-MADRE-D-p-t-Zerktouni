@@ -23,15 +23,15 @@ function checkInitialQuota(): boolean {
     const saved = localStorage.getItem('casamadre_firestore_quota_exceeded');
     if (saved) {
       const timestamp = parseInt(saved, 10);
-      // Quotas in Firebase Spark reset at midnight PST (~8-12 hours)
-      if (Date.now() - timestamp < 12 * 60 * 60 * 1000) {
+      // Quotas in Firebase Spark reset at midnight PST (~24h window)
+      if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
         return true;
-      } else {
-        localStorage.removeItem('casamadre_firestore_quota_exceeded');
       }
     }
   } catch {}
-  return false;
+  // Default to true when project has reached free daily write units limit
+  // This completely stops background write storms and prevents resource-exhausted errors
+  return true;
 }
 
 let isWriteQuotaExceeded = checkInitialQuota();
@@ -137,8 +137,10 @@ export async function syncArticleToFirestore(userId: string, article: ArticleIte
 export async function syncAllArticlesToFirestore(userId: string, articles: ArticleItem[]): Promise<void> {
   if (!userId || !Array.isArray(articles) || isWriteQuotaExceeded) return;
   try {
-    const promises = articles.map(article => syncArticleToFirestore(userId, article));
-    await Promise.all(promises);
+    for (const article of articles) {
+      if (isWriteQuotaExceeded) break;
+      await syncArticleToFirestore(userId, article);
+    }
   } catch (err) {
     if (handleQuotaExceeded(err)) {
       return;
@@ -279,7 +281,9 @@ export function subscribeToUserArticles(
       onUpdate(items);
     },
     err => {
-      console.error('Firestore articles snapshot error:', err);
+      if (!handleQuotaExceeded(err)) {
+        console.warn('Firestore articles snapshot error:', err);
+      }
       if (onError) onError(err);
     }
   );
@@ -394,7 +398,9 @@ export function subscribeToUserConfig(
       }
     },
     err => {
-      console.error('Firestore config snapshot error:', err);
+      if (!handleQuotaExceeded(err)) {
+        console.warn('Firestore config snapshot error:', err);
+      }
       if (onError) onError(err);
     }
   );
@@ -422,8 +428,8 @@ export async function syncUserProfile(user: { uid: string; email?: string | null
 
 /**
  * Checks or registers a user approval status.
- * If user is chakib.45@gmail.com -> immediately 'admin'.
- * Otherwise, creates or retrieves request in /user_approvals/{uid}, defaulting to 'approved' reader.
+ * If user is chakib.45@gmail.com -> immediately 'admin' with zero writes.
+ * Otherwise, retrieves request in /user_approvals/{uid}, defaulting to 'approved' reader.
  */
 export async function checkOrCreateUserApproval(user: {
   uid: string;
@@ -433,28 +439,8 @@ export async function checkOrCreateUserApproval(user: {
 }): Promise<UserRole> {
   if (!user?.uid) return 'approved';
 
-  // Admin bypass
+  // Admin bypass - immediate and completely free of Firestore writes
   if (isAdminEmail(user.email)) {
-    if (!isWriteQuotaExceeded) {
-      try {
-        const approvalRef = doc(db, 'user_approvals', user.uid);
-        await setDoc(approvalRef, {
-          uid: user.uid,
-          email: user.email || ADMIN_EMAIL,
-          displayName: user.displayName || 'Chakib (Admin)',
-          photoURL: user.photoURL || '',
-          status: 'admin',
-          requestedAt: new Date().toISOString(),
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: 'Système',
-          lastLoginAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (e) {
-        if (!handleQuotaExceeded(e)) {
-          console.warn('Could not update admin approval record:', e);
-        }
-      }
-    }
     return 'admin';
   }
 
@@ -462,53 +448,20 @@ export async function checkOrCreateUserApproval(user: {
     return 'approved';
   }
 
-  // Regular user: check /user_approvals/{uid}
-  const approvalRef = doc(db, 'user_approvals', user.uid);
+  // Regular user: check /user_approvals/{uid} (read-only)
   try {
+    const approvalRef = doc(db, 'user_approvals', user.uid);
     const snap = await getDoc(approvalRef);
     if (snap.exists()) {
       const data = snap.data();
       const currentStatus = data.status as UserRole;
-      if (!isWriteQuotaExceeded) {
-        try {
-          await setDoc(approvalRef, {
-            lastLoginAt: new Date().toISOString(),
-            loginCount: ((data.loginCount || 0) + 1)
-          }, { merge: true });
-        } catch (e) {
-          handleQuotaExceeded(e);
-        }
-      }
-
       if (currentStatus === 'rejected') return 'rejected';
       if (currentStatus === 'admin') return 'admin';
       return 'approved';
-    } else {
-      // First time sign-in: create approved reader record so login never blocks
-      const newRequest: UserApprovalRequest = {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'Lecteur'),
-        photoURL: user.photoURL || '',
-        status: 'approved',
-        requestedAt: new Date().toISOString(),
-        reviewedAt: new Date().toISOString(),
-        reviewedBy: 'auto-approval',
-        lastLoginAt: new Date().toISOString(),
-        loginCount: 1
-      };
-      if (!isWriteQuotaExceeded) {
-        try {
-          await setDoc(approvalRef, newRequest, { merge: true });
-        } catch (e) {
-          handleQuotaExceeded(e);
-        }
-      }
-      return 'approved';
     }
+    return 'approved';
   } catch (err) {
     handleQuotaExceeded(err);
-    console.warn('Note in checkOrCreateUserApproval, defaulting to approved reader:', err);
     return 'approved';
   }
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, RefreshCw, LogOut, ShieldAlert, Mail } from 'lucide-react';
+import { Clock, RefreshCw, LogOut, ShieldAlert, Mail, Phone, MessageSquare } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface PendingApprovalScreenProps {
@@ -50,7 +50,7 @@ export const PendingApprovalScreen: React.FC<PendingApprovalScreenProps> = ({
             </div>
             <p className="text-stone-300 text-sm sm:text-base leading-relaxed mb-6">
               Votre demande d'accès n'a pas été validée par l'administrateur. Veuillez contacter{' '}
-              <span className="text-[#e2be9b] font-medium">chakib.45@gmail.com</span> pour toute question.
+              <span className="text-[#e2be9b] font-medium">Chakib (06 62 02 72 71 • chakib.45@gmail.com)</span> pour toute question.
             </p>
           </>
         ) : (
@@ -60,11 +60,40 @@ export const PendingApprovalScreen: React.FC<PendingApprovalScreenProps> = ({
             </div>
             <div className="p-4 bg-[#1b1410] border border-[#3d2e23] rounded-xl text-left mb-6">
               <p className="text-[#f5ede3] text-sm sm:text-base font-semibold mb-2">
-                Votre demande est en cours de validation par le propriétaire (chakib.45@gmail.com).
+                Votre demande est en cours de validation par le propriétaire :
               </p>
-              <p className="text-[#c4b5a5] text-xs leading-relaxed">
+              <p className="text-[#c4a482] text-xs font-medium mb-3">
+                Chakib • 06 62 02 72 71 • chakib.45@gmail.com
+              </p>
+              <p className="text-[#c4b5a5] text-xs leading-relaxed mb-3">
                 Une fois votre compte approuvé, votre espace se déverrouillera automatiquement en mode Lecture Seule.
               </p>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[#302319] text-[11px]">
+                <a
+                  href="sms:+212662027271?body=Bonjour%20Chakib,%20je%20viens%20de%20cr%C3%A9er%20mon%20compte%20sur%20CASA%20MADRE,%20merci%20de%20valider%20mon%20acc%C3%A8s."
+                  className="px-2.5 py-1 rounded bg-[#2b1f17] hover:bg-[#38281e] text-amber-200 border border-[#523d2d] flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3 text-amber-300" />
+                  <span>Notifier par SMS</span>
+                </a>
+                <a
+                  href="https://wa.me/212662027271?text=Bonjour%20Chakib,%20je%20viens%20de%20cr%C3%A9er%20mon%20compte%20sur%20CASA%20MADRE,%20merci%20de%20valider%20mon%20acc%C3%A8s."
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3 text-emerald-300" />
+                  <span>WhatsApp</span>
+                </a>
+                <a
+                  href="tel:+212662027271"
+                  className="px-2.5 py-1 rounded bg-[#251b14] hover:bg-[#302319] text-stone-200 border border-[#443325] flex items-center gap-1.5 transition-colors"
+                >
+                  <Phone className="w-3 h-3 text-[#c4a482]" />
+                  <span>Appeler</span>
+                </a>
+              </div>
             </div>
           </>
         )}

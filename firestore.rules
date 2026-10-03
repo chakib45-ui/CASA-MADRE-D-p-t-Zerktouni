@@ -2,55 +2,68 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Vérifie si l'utilisateur est authentifié avec Firebase Auth
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    // Vérifie si l'utilisateur connecté est le Super-Administrateur / Propriétaire
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'chakib.45@gmail.com' ||
+        (request.auth.token.keys().hasAll(['email']) && request.auth.token.email.lower() == 'chakib.45@gmail.com')
+      );
+    }
+
+    // Vérifie si l'utilisateur accède à ses propres données
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && (request.auth.token.email == 'chakib.45@gmail.com');
-    }
-
-    // Profils utilisateurs et sous-collections catalogue
+    // 1. Profils utilisateurs et sous-collections catalogue
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isSuperAdmin() || isOwner(userId);
 
       match /articles/{articleId} {
-        allow read, write: if isAuthenticated();
+        allow read: if isAuthenticated();
+        allow write: if isSuperAdmin() || isOwner(userId);
       }
 
       match /config/{configDoc} {
-        allow read, write: if isAuthenticated();
+        allow read: if isAuthenticated();
+        allow write: if isSuperAdmin() || isOwner(userId);
       }
     }
 
-    // Collection inventaire partagée pour l'ensemble des utilisateurs autorisés
+    // 2. Collection catalogue & inventaire partagée
     match /inventory/{articleId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
     }
 
-    // Collection des approbations et rôles utilisateurs
+    // 3. Gestion des approbations et rôles des utilisateurs
     match /user_approvals/{userId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
     }
 
-    // Journal d'historique des accès et connexions
+    // 4. Journal d'historique et de traçabilité des accès (Audit Logs)
     match /access_logs/{logId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
     }
 
-    // Configuration globale et sécurité (ex: code PIN d'autorisation)
+    // 5. Configuration globale et sécurité (Code PIN d'autorisation '0045')
     match /app_config/{configId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
     }
 
-    // Refus par défaut pour toutes les requêtes non authentifiées
+    // 6. Refus par défaut pour tout autre document non explicite
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isSuperAdmin();
     }
   }
 }

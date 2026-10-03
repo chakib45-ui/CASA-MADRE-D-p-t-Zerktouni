@@ -66,8 +66,10 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Initialisation de la base de données Firestore (avec base de données dédiée)
-export const db = getFirestore(app, resolvedFirebaseConfig.firestoreDatabaseId);
+// Initialisation de la base de données Firestore (support base par défaut ou dédiée)
+export const db = resolvedFirebaseConfig.firestoreDatabaseId && resolvedFirebaseConfig.firestoreDatabaseId !== '(default)'
+  ? getFirestore(app, resolvedFirebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
 
 // Initialisation de Firebase Storage pour les images et documents
 export const storage = getStorage(app);

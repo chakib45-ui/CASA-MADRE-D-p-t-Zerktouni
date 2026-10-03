@@ -1,28 +1,44 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'chakib.45@gmail.com' ||
+        (request.auth.token.keys().hasAll(['email']) && request.auth.token.email.lower() == 'chakib.45@gmail.com')
+      );
+    }
+
+    // Dossiers des articles et photos du catalogue CASA MADRE
     match /articles/{articleId}/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated()
-                   && request.resource.size < 15 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+      // Super-Admin a tous les droits ; les utilisateurs authentifiés peuvent envoyer des images < 15MB
+      allow write: if isSuperAdmin() || (
+        isAuthenticated()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+      );
     }
 
+    // Dossiers utilisateurs (avatars, uploads temporaires)
     match /users/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated()
-                   && request.resource.size < 15 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+      allow write: if isSuperAdmin() || (
+        isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+      );
     }
 
+    // Tout autre fichier dans le bucket de stockage
     match /{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated()
-                   && request.resource.size < 15 * 1024 * 1024;
+      allow write: if isSuperAdmin();
     }
   }
 }
