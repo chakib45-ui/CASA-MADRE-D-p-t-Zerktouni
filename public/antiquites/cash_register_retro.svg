@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-cash_register_retro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-cash_register_retro" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-cash_register_retro)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-cash_register_retro)">
+    
+      <g transform="translate(170, 90)">
+        <!-- Heavy cash drawer base -->
+        <rect x="30" y="240" width="400" height="120" rx="10" fill="#d97706" stroke="#92400e" stroke-width="3"/>
+        <rect x="50" y="270" width="360" height="60" rx="4" fill="#b45309"/>
+        <!-- Tilting Operator screen -->
+        <rect x="130" y="50" width="200" height="140" rx="10" fill="#f5f5f4" stroke="#78716c" stroke-width="3"/>
+        <rect x="150" y="70" width="160" height="80" rx="6" fill="#15803d"/>
+        <text x="230" y="118" fill="#bbf7d0" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">TOTAL 45.00</text>
+        <!-- Numeric keypad plate -->
+        <rect x="80" y="190" width="300" height="60" rx="6" fill="#292524"/>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">CAISSE ENREGISTREUSE / TERMINAL ÉLECTRONIQUE RÉTRO</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

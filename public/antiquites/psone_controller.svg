@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-psone_controller" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-psone_controller" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-psone_controller)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-psone_controller)">
+    
+      <g transform="translate(190, 140)">
+        <path d="M 60 120 Q 90 20 210 30 Q 330 20 360 120 Q 400 220 350 280 Q 320 290 300 230 Q 260 220 210 220 Q 160 220 120 230 Q 100 290 70 280 Q 20 220 60 120 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
+        <rect x="95" y="80" width="20" height="60" rx="3" fill="#475569"/>
+        <rect x="75" y="100" width="60" height="20" rx="3" fill="#475569"/>
+        <circle cx="320" cy="90" r="9" fill="#10b981"/>
+        <circle cx="340" cy="110" r="9" fill="#ef4444"/>
+        <circle cx="320" cy="130" r="9" fill="#3b82f6"/>
+        <circle cx="300" cy="110" r="9" fill="#ec4899"/>
+        <circle cx="160" cy="170" r="28" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+        <circle cx="260" cy="170" r="28" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+        <text x="210" y="90" fill="#64748b" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">SONY</text>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">MANETTE SONY PSONE ORIGINALE</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

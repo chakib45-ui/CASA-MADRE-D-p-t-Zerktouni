@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-brick_game_green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-brick_game_green" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-brick_game_green)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-brick_game_green)">
+    
+      <g transform="translate(250, 70)">
+        <rect x="40" y="20" width="220" height="420" rx="20" fill="#84cc16" stroke="#65a30d" stroke-width="4"/>
+        <!-- LCD Screen -->
+        <rect x="75" y="60" width="150" height="140" rx="8" fill="#ecfccb" stroke="#365314" stroke-width="3"/>
+        <rect x="90" y="75" width="120" height="110" fill="#bef264" opacity="0.8"/>
+        <!-- LCD Pixels block illustration -->
+        <rect x="130" y="100" width="16" height="16" fill="#1a2e05"/>
+        <rect x="146" y="100" width="16" height="16" fill="#1a2e05"/>
+        <rect x="146" y="116" width="16" height="16" fill="#1a2e05"/>
+        <rect x="146" y="132" width="16" height="16" fill="#1a2e05"/>
+        <!-- Direction cross and action buttons -->
+        <circle cx="95" cy="280" r="14" fill="#1e293b"/>
+        <circle cx="135" cy="250" r="14" fill="#1e293b"/>
+        <circle cx="135" cy="310" r="14" fill="#1e293b"/>
+        <circle cx="175" cy="280" r="14" fill="#1e293b"/>
+        <circle cx="215" cy="350" r="24" fill="#dc2626" stroke="#f87171" stroke-width="2"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">JEU ÉLECTRONIQUE PORTABLE BRICK GAME VERT</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

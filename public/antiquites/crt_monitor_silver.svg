@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-crt_monitor_silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-crt_monitor_silver" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-crt_monitor_silver)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-crt_monitor_silver)">
+    
+      <g transform="translate(160, 90)">
+        <rect x="30" y="40" width="420" height="340" rx="18" fill="url(#metal-grad)" stroke="#ffffff" stroke-width="3"/>
+        <!-- Glass CRT screen -->
+        <rect x="60" y="65" width="360" height="250" rx="20" fill="#0f172a" stroke="#27272a" stroke-width="4"/>
+        <ellipse cx="240" cy="190" rx="140" ry="95" fill="url(#screen-glow)"/>
+        <!-- Front bottom controls -->
+        <g fill="#27272a" transform="translate(60, 335)">
+          <circle cx="30" cy="15" r="10" fill="#22c55e"/>
+          <rect x="70" y="8" width="20" height="14" rx="2"/>
+          <rect x="100" y="8" width="20" height="14" rx="2"/>
+          <rect x="130" y="8" width="20" height="14" rx="2"/>
+          <text x="320" y="18" fill="#52525b" font-family="sans-serif" font-size="12" font-weight="bold">COLOR TV</text>
+        </g>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">TÉLÉVISEUR MONITEUR CATHODIQUE ARGENTÉ</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

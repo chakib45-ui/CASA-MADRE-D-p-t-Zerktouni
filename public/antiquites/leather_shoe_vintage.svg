@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-leather_shoe_vintage" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-leather_shoe_vintage" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-leather_shoe_vintage)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-leather_shoe_vintage)">
+    
+      <g transform="translate(180, 140)">
+        <path d="M 40 180 Q 80 80 180 90 Q 240 100 280 160 Q 380 180 400 210 Q 380 260 280 260 L 60 260 Q 30 250 40 180 Z" fill="#b45309" stroke="#78350f" stroke-width="3"/>
+        <path d="M 60 260 L 60 290 L 140 290 L 140 260 Z" fill="#451a03"/>
+        <!-- Multicolored patchwork bands -->
+        <path d="M 120 120 L 160 260" stroke="#dc2626" stroke-width="12"/>
+        <path d="M 160 110 L 200 260" stroke="#2563eb" stroke-width="12"/>
+        <path d="M 200 120 L 240 260" stroke="#16a34a" stroke-width="12"/>
+        <path d="M 240 140 L 280 260" stroke="#eab308" stroke-width="12"/>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">SOULIER ARTISANAL SCULPTÉ VINTAGE CUIR</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

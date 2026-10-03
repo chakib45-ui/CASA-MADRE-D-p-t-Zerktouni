@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-cinema_projector_tall" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-cinema_projector_tall" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-cinema_projector_tall)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-cinema_projector_tall)">
+    
+      <g transform="translate(230, 40)">
+        <!-- Projector head on top -->
+        <rect x="80" y="60" width="180" height="150" rx="12" fill="#18181b" stroke="#71717a" stroke-width="2"/>
+        <!-- Two large reels on top -->
+        <circle cx="100" cy="40" r="45" fill="#27272a" stroke="#d4d4d8" stroke-width="3"/>
+        <circle cx="240" cy="40" r="45" fill="#27272a" stroke="#d4d4d8" stroke-width="3"/>
+        <!-- Projection lens -->
+        <rect x="30" y="110" width="60" height="50" rx="6" fill="url(#metal-grad)"/>
+        <circle cx="30" cy="135" r="20" fill="#38bdf8"/>
+        <!-- Tall tripod legs -->
+        <line x1="170" y1="210" x2="50" y2="480" stroke="url(#metal-grad)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="170" y1="210" x2="170" y2="480" stroke="url(#metal-grad)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="170" y1="210" x2="290" y2="480" stroke="url(#metal-grad)" stroke-width="10" stroke-linecap="round"/>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">GRAND PROJECTEUR CINÉMA SUR TRÉPIED</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

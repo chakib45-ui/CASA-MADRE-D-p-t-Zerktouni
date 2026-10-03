@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-phone_bakelite_black" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-phone_bakelite_black" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-phone_bakelite_black)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-phone_bakelite_black)">
+    
+      <g transform="translate(200, 90)">
+        <!-- Pyramid chassis -->
+        <path d="M 80 160 L 320 160 L 360 350 L 40 350 Z" fill="#18181b" stroke="#3f3f46" stroke-width="3"/>
+        <!-- Chrome Rotary Dial -->
+        <circle cx="200" cy="255" r="65" fill="url(#metal-grad)" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="200" cy="255" r="24" fill="#09090b"/>
+        <circle cx="222" cy="216.8948822334847" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="238.10511776651532" cy="233" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="244" cy="255" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="238.10511776651532" cy="277" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="222" cy="293.1051177665153" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="200" cy="299" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="178" cy="293.1051177665153" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="161.89488223348468" cy="277" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="156" cy="255" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/><circle cx="161.8948822334847" cy="233" r="9" fill="#18181b" stroke="#d4d4d8" stroke-width="1.5"/>
+        <!-- Heavy Handset on Chrome Cradle -->
+        <path d="M 170 140 L 230 140 L 220 160 L 180 160 Z" fill="url(#metal-grad)"/>
+        <path d="M 10 95 Q 200 135 390 95 L 375 60 Q 200 100 25 60 Z" fill="#09090b" stroke="#52525b" stroke-width="2"/>
+        <circle cx="30" cy="80" r="38" fill="#18181b"/>
+        <circle cx="370" cy="80" r="38" fill="#18181b"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">TÉLÉPHONE ANCIEN EN BAKÉLITE NOIRE</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

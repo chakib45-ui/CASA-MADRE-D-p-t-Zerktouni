@@ -483,27 +483,28 @@ export default function App() {
           // 2. Otherwise load from IndexedDB
           const savedArticles = await getStoredItem<ArticleItem[]>('casamadre_articles');
           if (savedArticles && savedArticles.length > 0) {
-            let updatedList = savedArticles.map(sanitizeArticleItem);
-            // Ensure newly added initial items are present
-            for (const initArt of [INITIAL_ARTICLES[1], INITIAL_ARTICLES[0]]) {
-              if (!updatedList.some(a => a.id === initArt.id)) {
-                updatedList = [initArt, ...updatedList];
-              }
-            }
-            currentLoadedArticles = updatedList;
+            currentLoadedArticles = savedArticles.map(sanitizeArticleItem);
           } else {
             currentLoadedArticles = INITIAL_ARTICLES.map(sanitizeArticleItem);
           }
         }
 
-        // Automatic transfer of all existing articles to "Antiquités" folder as requested
-        const folderMigrated = await getStoredItem<boolean>('casamadre_antiquites_transfer_done_v2');
-        if (!folderMigrated) {
-          currentLoadedArticles = currentLoadedArticles.map(a => ({
-            ...a,
-            folder: 'Antiquités',
-          }));
-          await setStoredItem('casamadre_antiquites_transfer_done_v2', true);
+        // Fusion intégrale : Tous les 68 articles du PDF + les 38 articles d'origine de la base
+        const fullBaseSynced = await getStoredItem<boolean>('casamadre_full_unified_catalog_v6');
+        if (!fullBaseSynced || currentLoadedArticles.length < INITIAL_ARTICLES.length) {
+          const map = new Map<string, ArticleItem>();
+          // 1. Ajouter d'abord tous les articles de INITIAL_ARTICLES (68 articles du PDF + 38 pièces d'époque d'origine)
+          for (const art of INITIAL_ARTICLES) {
+            map.set(art.id, sanitizeArticleItem(art));
+          }
+          // 2. Conserver les éventuels ajouts personnalisés de l'utilisateur
+          for (const art of currentLoadedArticles) {
+            if (art && art.id && !map.has(art.id)) {
+              map.set(art.id, sanitizeArticleItem(art));
+            }
+          }
+          currentLoadedArticles = Array.from(map.values());
+          await setStoredItem('casamadre_full_unified_catalog_v6', true);
         }
 
         setArticles(currentLoadedArticles);
@@ -522,10 +523,13 @@ export default function App() {
             ...DEFAULT_CONFIG,
             ...savedConfig,
             mainTitle: savedConfig.mainTitle || 'CASA MADRE',
-            subtitle: 'Dépôt Zerktouni',
+            subtitle: 'Dépôt Antiquités',
             collection: savedConfig.collection || '',
-            activeFolder: savedConfig.activeFolder || 'Antiquités',
+            activeFolder: 'Antiquités',
             folders: savedFolders,
+            catalogRef: savedConfig.catalogRef || 'INV-2025/01',
+            dateStr: savedConfig.dateStr || 'SEPTEMBRE 2026',
+            notesFooter: "Expertise & authenticité garanties • Visites sur rendez-vous à l'atelier",
             contactInfo: (savedConfig.contactInfo && savedConfig.contactInfo !== 'Zerktouni' && savedConfig.contactInfo !== 'Dépôt Zerktouni — Casablanca') ? savedConfig.contactInfo : '',
             showReference: false,
           };
@@ -534,13 +538,13 @@ export default function App() {
         } else {
           setConfig({
             ...DEFAULT_CONFIG,
-            subtitle: 'Dépôt Zerktouni',
-            collection: '',
             activeFolder: 'Antiquités',
-            folders: ['Antiquités', 'Halloween'],
-            contactInfo: '',
-            showReference: false,
+            subtitle: 'Dépôt Antiquités',
+            catalogRef: 'INV-2025/01',
+            dateStr: 'SEPTEMBRE 2026',
+            notesFooter: "Expertise & authenticité garanties • Visites sur rendez-vous à l'atelier",
           });
+          await setStoredItem('casamadre_config', DEFAULT_CONFIG);
         }
       } catch (err) {
         console.warn('Erreur chargement des données stockées', err);

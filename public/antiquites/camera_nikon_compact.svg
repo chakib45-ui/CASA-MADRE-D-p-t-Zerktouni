@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-camera_nikon_compact" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-camera_nikon_compact" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-camera_nikon_compact)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-camera_nikon_compact)">
+    
+      <g transform="translate(180, 130)">
+        <rect x="30" y="40" width="380" height="240" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="3"/>
+        <!-- Big lens ring -->
+        <circle cx="220" cy="160" r="75" fill="#27272a" stroke="url(#metal-grad)" stroke-width="4"/>
+        <circle cx="220" cy="160" r="50" fill="#09090b"/>
+        <circle cx="220" cy="160" r="25" fill="#1e3a8a" opacity="0.8"/>
+        <!-- Brand -->
+        <text x="220" y="75" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="900" text-anchor="middle" letter-spacing="2">Nikon</text>
+        <!-- Flash and viewfinder -->
+        <rect x="70" y="60" width="50" height="30" rx="4" fill="#fbbf24" opacity="0.8" stroke="#ffffff" stroke-width="1"/>
+        <rect x="135" y="65" width="20" height="20" rx="3" fill="#38bdf8"/>
+        <!-- Shutter button -->
+        <rect x="70" y="24" width="35" height="16" rx="4" fill="#ef4444"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">APPAREIL PHOTO COMPACT ARGENTIQUE NIKON</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

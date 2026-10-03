@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-vinyl_45t" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-vinyl_45t" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-vinyl_45t)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-vinyl_45t)">
+    
+      <!-- Red Record Sleeve -->
+      <g transform="translate(180, 70)">
+        <rect x="0" y="0" width="440" height="430" rx="8" fill="#c62828" stroke="#ef5350" stroke-width="2"/>
+        <circle cx="220" cy="215" r="100" fill="#17120e" opacity="0.3"/>
+        <rect x="30" y="30" width="380" height="370" fill="none" stroke="#e57373" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="220" y="90" fill="#ffffff" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" letter-spacing="3">DISQUE 45 TOURS</text>
+      </g>
+      <!-- Vinyl emerging -->
+      <g transform="translate(230, 95)">
+        <circle cx="200" cy="200" r="180" fill="#111113" stroke="#2a2a2e" stroke-width="3"/>
+        <circle cx="200" cy="200" r="150" fill="none" stroke="#222226" stroke-width="2"/>
+        <circle cx="200" cy="200" r="120" fill="none" stroke="#1d1d21" stroke-width="2"/>
+        <!-- Blue Center Label -->
+        <circle cx="200" cy="200" r="68" fill="#1976d2" stroke="#64b5f6" stroke-width="2"/>
+        <circle cx="200" cy="200" r="18" fill="#140f0c" stroke="#ffffff" stroke-width="2"/>
+        <text x="200" y="180" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle">STÉRÉO 45 RPM</text>
+        <text x="200" y="235" fill="#bbdefb" font-family="sans-serif" font-size="9" text-anchor="middle">COLLECTION VINTAGE</text>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">DISQUE VINYLE 45 TOURS VINTAGE</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

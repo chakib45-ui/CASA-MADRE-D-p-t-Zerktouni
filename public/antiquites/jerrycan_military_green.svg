@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-jerrycan_military_green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-jerrycan_military_green" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-jerrycan_military_green)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-jerrycan_military_green)">
+    
+      <g transform="translate(230, 70)">
+        <!-- Canister Body -->
+        <rect x="40" y="90" width="260" height="340" rx="20" fill="#3f4f34" stroke="#283421" stroke-width="4"/>
+        <!-- Embossed X cross reinforcement -->
+        <line x1="80" y1="140" x2="260" y2="380" stroke="#283421" stroke-width="14" stroke-linecap="round"/>
+        <line x1="260" y1="140" x2="80" y2="380" stroke="#283421" stroke-width="14" stroke-linecap="round"/>
+        <text x="170" y="270" fill="#283421" font-family="sans-serif" font-size="28" font-weight="900" text-anchor="middle">20 L</text>
+        <!-- Triple Handle on top -->
+        <path d="M 80 90 L 80 40 L 260 40 L 260 90" fill="none" stroke="#3f4f34" stroke-width="22" stroke-linecap="round"/>
+        <!-- Cap with pin lock -->
+        <rect x="75" y="45" width="40" height="30" rx="4" fill="#1e2618" stroke="#a3b18a" stroke-width="2"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">JERRICAN D'ESSENCE MILITAIRE MÉTAL VERT KAKI</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

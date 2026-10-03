@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-decoder_receiver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-decoder_receiver" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-decoder_receiver)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-decoder_receiver)">
+    
+      <g transform="translate(140, 180)">
+        <rect x="0" y="0" width="520" height="180" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
+        <rect x="30" y="40" width="200" height="45" rx="4" fill="#09090b"/>
+        <text x="130" y="68" fill="#4ade80" font-family="monospace" font-size="20" text-anchor="middle">CH - 04</text>
+        <circle cx="280" cy="62" r="6" fill="#ef4444"/>
+        <circle cx="310" cy="62" r="6" fill="#22c55e"/>
+        <!-- Power transformer adapter -->
+        <rect x="370" y="30" width="100" height="70" rx="6" fill="#27272a" stroke="#52525b" stroke-width="1.5"/>
+        <path d="M 420 100 Q 400 240 250 250" fill="none" stroke="#09090b" stroke-width="6"/>
+        <text x="260" y="140" fill="#a1a1aa" font-family="sans-serif" font-size="12" text-anchor="middle">DIGITAL RECEIVER & POWER SUPPLY</text>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">DÉCODEUR VIDÉO VINTAGE & ADAPTATEUR</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-leather_trunk_camel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-leather_trunk_camel" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-leather_trunk_camel)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-leather_trunk_camel)">
+    
+      <g transform="translate(140, 110)">
+        <!-- Trunk body -->
+        <rect x="20" y="40" width="480" height="320" rx="16" fill="#b45309" stroke="#78350f" stroke-width="4"/>
+        <!-- Leather straps -->
+        <rect x="120" y="36" width="36" height="328" fill="#78350f" stroke="#451a03" stroke-width="2"/>
+        <rect x="360" y="36" width="36" height="328" fill="#78350f" stroke="#451a03" stroke-width="2"/>
+        <!-- Brass corner protectors -->
+        <polygon points="20,40 70,40 20,90" fill="url(#gold-grad)"/>
+        <polygon points="500,40 450,40 500,90" fill="url(#gold-grad)"/>
+        <polygon points="20,360 70,360 20,310" fill="url(#gold-grad)"/>
+        <polygon points="500,360 450,360 500,310" fill="url(#gold-grad)"/>
+        <!-- Center brass lock -->
+        <rect x="235" y="160" width="50" height="65" rx="6" fill="url(#gold-grad)" stroke="#78350f" stroke-width="2"/>
+        <circle cx="260" cy="185" r="8" fill="#451a03"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">MALLE ANCIENNE EN CUIR FAUVE CAMEL</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

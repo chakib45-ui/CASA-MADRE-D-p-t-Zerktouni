@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-motorola_startac" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="50%" stop-color="#1e1713"/>
+      <stop offset="100%" stop-color="#120d0a"/>
+    </linearGradient>
+    <filter id="shadow-motorola_startac" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+    <linearGradient id="screen-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg-motorola_startac)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <g id="illustration" filter="url(#shadow-motorola_startac)">
+    
+      <g transform="translate(250, 70)">
+        <!-- Antenna -->
+        <line x1="210" y1="90" x2="210" y2="10" stroke="#18181b" stroke-width="8" stroke-linecap="round"/>
+        <!-- Open Clapet Top -->
+        <path d="M 70 180 L 90 40 L 190 40 L 210 180 Z" fill="#27272a" stroke="#52525b" stroke-width="2"/>
+        <!-- Main lower body -->
+        <rect x="50" y="170" width="180" height="240" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="3"/>
+        <!-- Red LED display -->
+        <rect x="80" y="190" width="120" height="35" rx="4" fill="#450a0a" stroke="#7f1d1d" stroke-width="1.5"/>
+        <text x="140" y="215" fill="#ef4444" font-family="monospace" font-size="16" font-weight="bold" text-anchor="middle">MOTOROLA</text>
+        <!-- Buttons matrix -->
+        <g fill="#3f3f46">
+          <circle cx="85" cy="255" r="10"/><circle cx="125" cy="255" r="10"/><circle cx="165" cy="255" r="10"/><circle cx="85" cy="290" r="10"/><circle cx="125" cy="290" r="10"/><circle cx="165" cy="290" r="10"/><circle cx="85" cy="325" r="10"/><circle cx="125" cy="325" r="10"/><circle cx="165" cy="325" r="10"/><circle cx="85" cy="360" r="10"/><circle cx="125" cy="360" r="10"/><circle cx="165" cy="360" r="10"/>
+        </g>
+      </g>
+    
+  </g>
+
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">TÉLÉPHONE PORTABLE VINTAGE À CLAPET & ANTENNE</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-typewriter_vintage" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2f26"/>
+      <stop offset="50%" stop-color="#221b16"/>
+      <stop offset="100%" stop-color="#140f0c"/>
+    </linearGradient>
+    <filter id="shadow-typewriter_vintage" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="12" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <linearGradient id="metal-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8c8c8e"/>
+      <stop offset="30%" stop-color="#d4d4d8"/>
+      <stop offset="70%" stop-color="#a1a1aa"/>
+      <stop offset="100%" stop-color="#52525b"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c59b27"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#855814"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background surface -->
+  <rect width="800" height="600" fill="url(#bg-typewriter_vintage)" />
+  <rect width="800" height="600" fill="#000000" opacity="0.2" />
+
+  <!-- Frame border accent -->
+  <rect x="20" y="20" width="760" height="560" rx="12" fill="none" stroke="#5a4332" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Main Illustration Group -->
+  <g id="illustration" filter="url(#shadow-typewriter_vintage)">
+    
+      <g transform="translate(150, 130)">
+        <!-- Chassis -->
+        <path d="M 50 120 L 450 120 L 480 320 L 20 320 Z" fill="#e4d5b7" stroke="#bfa37c" stroke-width="3"/>
+        <!-- Carriage and Roller -->
+        <rect x="30" y="60" width="440" height="50" rx="8" fill="#27272a" stroke="#71717a" stroke-width="2"/>
+        <rect x="60" y="70" width="380" height="30" fill="#ffffff" opacity="0.9"/>
+        <!-- Keyboard bed -->
+        <rect x="60" y="200" width="380" height="100" rx="6" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
+        <!-- Keys matrix -->
+        <rect x="80" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="114" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="148" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="182" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="216" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="250" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="284" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="318" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="352" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="386" y="210" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="80" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="114" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="148" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="182" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="216" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="250" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="284" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="318" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="352" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="386" y="238" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="80" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="114" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="148" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="182" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="216" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="250" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="284" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="318" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="352" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/><rect x="386" y="266" width="26" height="22" rx="4" fill="#fafaf9" stroke="#78716c" stroke-width="1.5"/>
+        <!-- Space bar -->
+        <rect x="150" y="295" width="200" height="16" rx="4" fill="#292524" stroke="#78716c" stroke-width="1"/>
+      </g>
+    
+  </g>
+
+  <!-- Elegant Category Badge & Title -->
+  <g transform="translate(40, 530)">
+    <rect x="0" y="0" width="720" height="42" rx="6" fill="#140f0c" opacity="0.85" stroke="#3d2c20" stroke-width="1"/>
+    <text x="24" y="26" fill="#f5ede3" font-family="'Cinzel', Georgia, serif" font-size="14" font-weight="bold" letter-spacing="1.5">MACHINE À ÉCRIRE MÉCANIQUE VINTAGE</text>
+    <text x="696" y="26" fill="#c4a482" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-size="13" text-anchor="end">CASA MADRE • DÉPÔT ZERKTOUNI</text>
+  </g>
+</svg>
