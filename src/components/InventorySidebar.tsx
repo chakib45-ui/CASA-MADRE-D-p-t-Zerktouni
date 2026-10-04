@@ -16,7 +16,8 @@ import {
   FolderTree, 
   PanelLeftClose,
   Sparkles,
-  Tag
+  Tag,
+  FileText
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { downloadImageFile, FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
@@ -35,6 +36,7 @@ interface InventorySidebarProps {
   onDuplicateArticle: (article: ArticleItem) => void;
   onDeleteArticle: (id: string) => void;
   onOpenBatchUpload: () => void;
+  onOpenPdfImport?: () => void;
   onAddNewManual: () => void;
   onResetToDefault: () => void;
   onRepairLibrary?: () => void;
@@ -56,6 +58,7 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
   onDuplicateArticle,
   onDeleteArticle,
   onOpenBatchUpload,
+  onOpenPdfImport,
   onAddNewManual,
   onResetToDefault,
   onRepairLibrary,
@@ -168,17 +171,28 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
           </div>
         )}
 
-        {/* Action Button: + Nouvel article */}
+        {/* Action Buttons: + Nouvel article & Import PDF */}
         <div className="flex gap-1.5">
           <button
             type="button"
             onClick={onAddNewManual}
-            className="flex-1 py-1.5 px-3 bg-gradient-to-r from-[#8c6239] to-[#734f2d] hover:from-[#9c6f42] hover:to-[#815934] text-white font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-[0_2px_6px_rgba(140,98,57,0.25)] cursor-pointer active:scale-[0.99]"
+            className="flex-1 py-1.5 px-2.5 bg-gradient-to-r from-[#8c6239] to-[#734f2d] hover:from-[#9c6f42] hover:to-[#815934] text-white font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-[0_2px_6px_rgba(140,98,57,0.25)] cursor-pointer active:scale-[0.99]"
             title="Créer une nouvelle fiche article manuellement"
           >
             <Plus className="w-3.5 h-3.5 text-[#ffdca8]" />
             <span>+ Nouvel article</span>
           </button>
+          {onOpenPdfImport && (
+            <button
+              type="button"
+              onClick={onOpenPdfImport}
+              className="py-1.5 px-2 bg-[#f5efe8] dark:bg-[#2c2017] hover:bg-[#eae2d8] dark:hover:bg-[#38291e] border border-[#dfd4c5] dark:border-[#453426] text-[#8c6239] dark:text-[#d4a373] font-semibold rounded-lg text-xs flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+              title="Importer un fichier catalogue PDF"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Import PDF</span>
+            </button>
+          )}
         </div>
 
         {/* Search input in sidebar */}

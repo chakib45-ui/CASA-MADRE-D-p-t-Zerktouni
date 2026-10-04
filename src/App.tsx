@@ -13,6 +13,7 @@ import { CatalogPreview } from './components/CatalogPreview';
 import { ArticleEditorModal } from './components/ArticleEditorModal';
 import { BatchUploadModal } from './components/BatchUploadModal';
 import { HeaderSettingsModal } from './components/HeaderSettingsModal';
+import { PdfImportModal } from './components/PdfImportModal';
 import { PrintModal } from './components/PrintModal';
 import { ImageViewerModal } from './components/ImageViewerModal';
 import { CameraCaptureModal } from './components/CameraCaptureModal';
@@ -139,6 +140,8 @@ export default function App() {
 
   // Modals state
   const [isBatchUploadOpen, setIsBatchUploadOpen] = useState(false);
+  const [isPdfImportOpen, setIsPdfImportOpen] = useState(false);
+  const [initialFileForPdfImport, setInitialFileForPdfImport] = useState<File | null>(null);
   const [initialFilesForBatch, setInitialFilesForBatch] = useState<File[]>([]);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isHeaderSettingsOpen, setIsHeaderSettingsOpen] = useState(false);
@@ -757,17 +760,31 @@ export default function App() {
 
       try {
         const extracted = await extractFilesFromDataTransfer(e.dataTransfer);
+        const pdfFiles = extracted.filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
         const imageFiles = extracted.filter(isImageFile);
 
-        if (imageFiles.length > 0) {
+        if (pdfFiles.length > 0) {
+          executeWithPinProtection(() => {
+            setInitialFileForPdfImport(pdfFiles[0]);
+            setIsPdfImportOpen(true);
+            showToast(`Document PDF détecté — Prêt pour l'extraction`);
+          }, "Importer un catalogue PDF");
+        } else if (imageFiles.length > 0) {
           executeWithPinProtection(() => {
             setInitialFilesForBatch(imageFiles);
             setIsBatchUploadOpen(true);
             showToast(`${imageFiles.length} photo(s) détectée(s) — Prêtes pour l'import`);
           }, "Import de photos");
         } else if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const fallbackPdf = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
           const fallbackImages = Array.from(e.dataTransfer.files).filter(isImageFile);
-          if (fallbackImages.length > 0) {
+          if (fallbackPdf.length > 0) {
+            executeWithPinProtection(() => {
+              setInitialFileForPdfImport(fallbackPdf[0]);
+              setIsPdfImportOpen(true);
+              showToast(`Document PDF détecté — Prêt pour l'extraction`);
+            }, "Importer un catalogue PDF");
+          } else if (fallbackImages.length > 0) {
             executeWithPinProtection(() => {
               setInitialFilesForBatch(fallbackImages);
               setIsBatchUploadOpen(true);
@@ -1127,6 +1144,7 @@ export default function App() {
         onPrint={() => setIsPrintModalOpen(true)}
         onOpenHeaderSettings={() => setIsHeaderSettingsOpen(true)}
         onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+        onOpenPdfImport={() => executeWithPinProtection(() => setIsPdfImportOpen(true), "Importer un catalogue PDF")}
         onOpenScanner={() => executeWithPinProtection(() => setIsScannerOpen(true), "Scanner / Photo")}
         isDarkMode={!!config.uiDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
@@ -1406,6 +1424,26 @@ export default function App() {
         onRepairLibrary={handleRepairLibrary}
         articles={articles}
         onImportBackup={handleImportBackup}
+      />
+
+      {/* Modal d'importation de catalogue PDF avec extraction automatique */}
+      <PdfImportModal
+        isOpen={isPdfImportOpen}
+        onClose={() => {
+          setIsPdfImportOpen(false);
+          setInitialFileForPdfImport(null);
+        }}
+        initialFile={initialFileForPdfImport}
+        onArticlesImported={(importedArticles, message) => {
+          setArticles(importedArticles);
+          showToast(message);
+          if (currentUser) {
+            syncAllArticlesToFirestore(currentUser.uid, importedArticles).catch(err => console.error('Cloud sync error:', err));
+          }
+        }}
+        currentArticles={articles}
+        activeFolder={activeFolder === 'all' ? 'Antiquités' : activeFolder}
+        availableFolders={folders}
       />
 
       {/* Authorization PIN Modal for modifications */}

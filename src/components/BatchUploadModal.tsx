@@ -10,11 +10,13 @@ import {
   Minus, 
   RefreshCw,
   Image as ImageIcon,
-  ShieldCheck
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { optimizeImageFile, isImageFile, extractFilesFromDataTransfer } from '../utils/imageOptimizer';
 import { playCameraShutterSound, playAlertNotificationSound } from '../utils/audioFeedback';
+import { extractArticlesFromPdf } from '../utils/pdfImporter';
 
 export interface BatchItem {
   id: string;
@@ -77,47 +79,80 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
 
   const processFiles = async (files: File[]) => {
     setUploadError(null);
+    const pdfFiles = files.filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
     const validImageFiles = files.filter(isImageFile);
-    if (validImageFiles.length === 0) {
-      setUploadError("Aucun format d'image reconnu parmi les fichiers sélectionnés. Formats supportés : JPG, PNG, WEBP, HEIC, GIF, AVIF.");
+
+    if (pdfFiles.length === 0 && validImageFiles.length === 0) {
+      setUploadError("Aucun format d'image ou catalogue PDF reconnu parmi les fichiers sélectionnés. Formats supportés : PDF, JPG, PNG, WEBP, HEIC, GIF, AVIF.");
       return;
     }
 
     setIsCompressing(true);
     try {
-      const results = await Promise.allSettled(
-        validImageFiles.map(async (file, index) => {
-          // Preserve original photo cleanly without cropping or filters
-          const preview = await optimizeImageFile(file, 1800, 0.92);
-          if (!preview) {
-            throw new Error(`Impossible de lire l'image ${file.name}`);
-          }
-          const isGenericFileName = /whatsapp\s*image/i.test(file.name) || /^img[-_]/i.test(file.name) || /^pxl[-_]/i.test(file.name) || file.name.includes('23.15.51');
-          const cleanName = isGenericFileName
-            ? "Article d'Antiquité"
-            : file.name
-                .replace(/\.[^/.]+$/, '')
-                .replace(/[-_]/g, ' ')
-                .replace(/\b\w/g, l => l.toUpperCase());
-
-          return {
-            id: `batch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
-            file,
-            preview,
-            name: cleanName || "Article d'Antiquité",
-            quantity: defaultQuantity,
-            category: defaultCategory,
-            material: '',
-            periodOrStyle: '',
-            aiStatus: 'analyzing' as const,
-          };
-        })
-      );
-
       const newItems: BatchItem[] = [];
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value) {
-          newItems.push(res.value as BatchItem);
+
+      // 1. Process PDF files if any
+      if (pdfFiles.length > 0) {
+        for (const pdf of pdfFiles) {
+          const pdfResult = await extractArticlesFromPdf(pdf, {
+            targetFolder: destinationFolder,
+            autoSound: true,
+          });
+
+          if (pdfResult.success && pdfResult.articles.length > 0) {
+            for (let i = 0; i < pdfResult.articles.length; i++) {
+              const art = pdfResult.articles[i];
+              newItems.push({
+                id: art.id || `batch-pdf-${Date.now()}-${i}`,
+                file: new File([], art.name + '.jpg', { type: 'image/jpeg' }),
+                preview: art.imageUrl || '',
+                name: art.name,
+                quantity: art.quantity || defaultQuantity,
+                category: art.category || defaultCategory,
+                material: art.material || '',
+                periodOrStyle: art.periodOrStyle || '',
+                aiStatus: 'done' as const,
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Process image files if any
+      if (validImageFiles.length > 0) {
+        const results = await Promise.allSettled(
+          validImageFiles.map(async (file, index) => {
+            // Preserve original photo cleanly without cropping or filters
+            const preview = await optimizeImageFile(file, 1800, 0.92);
+            if (!preview) {
+              throw new Error(`Impossible de lire l'image ${file.name}`);
+            }
+            const isGenericFileName = /whatsapp\s*image/i.test(file.name) || /^img[-_]/i.test(file.name) || /^pxl[-_]/i.test(file.name) || file.name.includes('23.15.51');
+            const cleanName = isGenericFileName
+              ? "Article d'Antiquité"
+              : file.name
+                  .replace(/\.[^/.]+$/, '')
+                  .replace(/[-_]/g, ' ')
+                  .replace(/\b\w/g, l => l.toUpperCase());
+
+            return {
+              id: `batch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
+              file,
+              preview,
+              name: cleanName || "Article d'Antiquité",
+              quantity: defaultQuantity,
+              category: defaultCategory,
+              material: '',
+              periodOrStyle: '',
+              aiStatus: 'analyzing' as const,
+            };
+          })
+        );
+
+        for (const res of results) {
+          if (res.status === 'fulfilled' && res.value) {
+            newItems.push(res.value as BatchItem);
+          }
         }
       }
 
@@ -353,7 +388,7 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.jfif,.avif,.bmp,.gif"
+              accept="image/*,.pdf,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.jfif,.avif,.bmp,.gif"
               multiple
               onChange={handleFileChange}
               className="hidden"
@@ -368,16 +403,16 @@ export const BatchUploadModal: React.FC<BatchUploadModalProps> = ({
               </div>
               <p className="font-semibold text-sm">
                 {isCompressing
-                  ? 'Chargement des photos originales...'
-                  : 'Glissez-déposez vos photos ici ou cliquez pour parcourir vos fichiers'}
+                  ? 'Chargement et extraction en cours...'
+                  : 'Glissez-déposez vos photos ou votre catalogue PDF ici'}
               </p>
               <div className="mt-1">
                 <span className="inline-block px-3 py-1 bg-[#8c6239] hover:bg-[#734f2d] text-white text-xs font-semibold rounded shadow-xs">
-                  Sélectionner des photos sur mon appareil
+                  Sélectionner des photos ou un PDF (.pdf)
                 </span>
               </div>
               <p className="text-xs text-[#6e6259] dark:text-[#a8988a] mt-1">
-                Formats acceptés : JPG, PNG, WEBP, HEIC (iPhone), AVIF. Vos photos originales restent intactes sans déformation.
+                Formats acceptés : PDF (catalogue d'inventaire), JPG, PNG, WEBP, HEIC, AVIF.
               </p>
             </div>
           </div>

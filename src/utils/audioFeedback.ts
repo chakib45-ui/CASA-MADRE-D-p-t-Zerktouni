@@ -49,21 +49,39 @@ function playLocalAudioFile(relativeUrl: string, fallbackSynthesizer?: () => voi
   if (isAudioMuted()) return;
   if (typeof window === 'undefined') return;
 
-  try {
-    // Relative path support (e.g. ./sounds/camera-shutter.mp3)
-    const audio = new Audio(relativeUrl);
-    audio.volume = 0.75;
-    const playPromise = audio.play();
+  // Build candidate URL paths to guarantee audio loads in all environments
+  const candidateUrls: string[] = [
+    relativeUrl,
+    relativeUrl.startsWith('./') ? relativeUrl.slice(1) : `./${relativeUrl}`,
+    relativeUrl.replace(/^\.?\/?sounds\//, '/sounds/'),
+    relativeUrl.replace(/^\.?\/?sounds\//, '/'),
+    `./public${relativeUrl.startsWith('/') ? '' : '/'}${relativeUrl}`,
+  ];
+  const uniqueUrls = Array.from(new Set(candidateUrls));
 
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // In case relative path failed or autoplay restrictions triggered, run synthesized fallback
-        if (fallbackSynthesizer) fallbackSynthesizer();
-      });
+  let index = 0;
+  function tryNext() {
+    if (index >= uniqueUrls.length) {
+      if (fallbackSynthesizer) fallbackSynthesizer();
+      return;
     }
-  } catch (err) {
-    if (fallbackSynthesizer) fallbackSynthesizer();
+    const currentUrl = uniqueUrls[index++];
+    try {
+      const audio = new Audio(currentUrl);
+      audio.volume = 0.75;
+      const playPromise = audio.play();
+
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          tryNext();
+        });
+      }
+    } catch {
+      tryNext();
+    }
   }
+
+  tryNext();
 }
 
 /**

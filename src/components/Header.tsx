@@ -37,6 +37,7 @@ interface HeaderProps {
   onPrint: () => void;
   onOpenHeaderSettings: () => void;
   onOpenBatchUpload?: () => void;
+  onOpenPdfImport?: () => void;
   onOpenScanner?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
@@ -66,6 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   onPrint,
   onOpenHeaderSettings,
   onOpenBatchUpload,
+  onOpenPdfImport,
   onOpenScanner,
   isDarkMode = false,
   onToggleDarkMode,
@@ -250,6 +252,24 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="w-px h-4 bg-white/20" />
             )}
 
+            {onOpenPdfImport && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    onOpenPdfImport();
+                  }}
+                  className="px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-white flex items-center gap-1 transition-colors cursor-pointer hover:bg-black/15 active:scale-98"
+                  title="Importer un catalogue PDF (CASAMADRE DEPOT)"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#ffdca8]" />
+                  <span className="hidden xs:inline">Import PDF</span>
+                </button>
+                <div className="w-px h-4 bg-white/20" />
+              </>
+            )}
+
             {onOpenScanner && (
               <button
                 type="button"
@@ -358,6 +378,28 @@ export const Header: React.FC<HeaderProps> = ({
                         .xlsx
                       </span>
                     </button>
+
+                    {/* Importer un catalogue PDF */}
+                    {onOpenPdfImport && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound();
+                          setIsMenuOpen(false);
+                          onOpenPdfImport();
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[#35281f] text-left transition-colors cursor-pointer group"
+                        title="Importer un fichier catalogue PDF (CASAMADRE DEPOT)"
+                      >
+                        <span className="flex items-center gap-2">
+                          <FileText className="w-3.5 h-3.5 text-amber-300 group-hover:text-white" />
+                          <span className="font-medium text-[#f5ede3]">Importer un catalogue PDF</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-950/60 border border-amber-600/40 text-amber-300">
+                          .PDF
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
