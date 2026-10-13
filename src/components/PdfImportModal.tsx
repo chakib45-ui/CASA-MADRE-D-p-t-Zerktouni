@@ -1,458 +1,694 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, 
-  X, 
   Upload, 
-  Loader2, 
+  X, 
   CheckCircle2, 
   AlertCircle, 
+  Loader2, 
+  Sparkles, 
+  Image as ImageIcon, 
+  Folder, 
+  Trash2, 
   Check, 
   RefreshCw,
-  Info,
+  Search,
+  SlidersHorizontal,
   Layers,
-  Image as ImageIcon
+  ArrowRight
 } from 'lucide-react';
 import { ArticleItem } from '../types';
-import { extractArticlesFromPdf, injectPdfArticlesIntoStorage, PdfImportProgress } from '../utils/pdfImporter';
-import { playAlertNotificationSound, playClickSound } from '../utils/audioFeedback';
+import { parsePdfFile, ExtractedPdfArticle, PdfImportResult } from '../utils/pdfImporter';
 import { FALLBACK_ANTIQUE_IMAGE } from '../utils/imageOptimizer';
+import { playAlertNotificationSound, playSuccessSound } from '../utils/audioFeedback';
 
 interface PdfImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onArticlesImported: (importedArticles: ArticleItem[], message: string) => void;
-  currentArticles: ArticleItem[];
-  activeFolder: string;
-  availableFolders: string[];
+  onImportArticles?: (articles: ArticleItem[], targetFolder: string) => void;
+  onArticlesImported?: (articles: ArticleItem[], message: string) => void;
+  currentArticles?: ArticleItem[];
+  activeFolder?: string;
+  availableFolders?: string[];
   initialFile?: File | null;
 }
 
 export const PdfImportModal: React.FC<PdfImportModalProps> = ({
   isOpen,
   onClose,
+  onImportArticles,
   onArticlesImported,
-  currentArticles,
+  currentArticles = [],
   activeFolder = 'Antiquités',
-  availableFolders = ['Antiquités', 'Halloween'],
+  availableFolders = ['Antiquités', 'Halloween', 'CASAMADRE DEPOT'],
   initialFile = null,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [targetFolder, setTargetFolder] = useState<string>(activeFolder || 'Antiquités');
-  const [replaceMode, setReplaceMode] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [progress, setProgress] = useState<PdfImportProgress | null>(null);
-  const [extractedArticles, setExtractedArticles] = useState<ArticleItem[]>([]);
-  const [photosCount, setPhotosCount] = useState<number>(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successSummary, setSuccessSummary] = useState<string | null>(null);
-  
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsingStep, setParsingStep] = useState<string>('');
+  const [parsingProgress, setParsingProgress] = useState<number>(0);
+  const [parseResult, setParseResult] = useState<PdfImportResult | null>(null);
+  const [extractedArticles, setExtractedArticles] = useState<ExtractedPdfArticle[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [destinationFolder, setDestinationFolder] = useState<string>(
+    activeFolder === 'all' ? 'CASAMADRE DEPOT' : activeFolder
+  );
+  const [customFolder, setCustomFolder] = useState('');
+  const [showCustomFolder, setShowCustomFolder] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync folder and initial file
   useEffect(() => {
     if (activeFolder) {
-      setTargetFolder(activeFolder === 'all' ? 'Antiquités' : activeFolder);
+      setDestinationFolder(activeFolder === 'all' ? 'CASAMADRE DEPOT' : activeFolder);
     }
   }, [activeFolder, isOpen]);
 
-  // If an initial file was passed (e.g. from drag & drop on main screen), start processing it
   useEffect(() => {
-    if (isOpen && initialFile && !selectedFile && !isProcessing && extractedArticles.length === 0) {
-      handleFileSelect(initialFile);
+    if (initialFile && isOpen) {
+      handleFileSelected(initialFile);
     }
-  }, [isOpen, initialFile]);
+  }, [initialFile, isOpen]);
 
-  if (!isOpen) return null;
-
-  const resetState = () => {
-    setSelectedFile(null);
-    setIsProcessing(false);
-    setProgress(null);
-    setExtractedArticles([]);
-    setPhotosCount(0);
-    setErrorMessage(null);
-    setSuccessSummary(null);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelected(file);
+    }
   };
 
-  const handleClose = () => {
-    if (isProcessing) return;
-    resetState();
-    onClose();
-  };
-
-  const handleFileSelect = async (file: File) => {
-    if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
-      setErrorMessage("Veuillez sélectionner un document au format PDF valide (.pdf).");
+  const handleFileSelected = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      setErrorMsg("Format de fichier non pris en charge. Veuillez sélectionner un document PDF (.pdf).");
+      playAlertNotificationSound();
       return;
     }
 
     setSelectedFile(file);
-    setErrorMessage(null);
-    setIsProcessing(true);
-    setExtractedArticles([]);
-    setProgress({
-      currentPage: 0,
-      totalPages: 0,
-      percent: 5,
-      itemsFound: 0,
-      photosFound: 0,
-      statusMessage: "Initialisation du moteur d'extraction PDF...",
-    });
+    setErrorMsg(null);
+    setIsParsing(true);
+    setParsingProgress(10);
+    setParsingStep("Initialisation de l'analyse du document PDF...");
 
     try {
-      const result = await extractArticlesFromPdf(
-        file,
-        {
-          targetFolder: targetFolder,
-          autoSound: true,
-        },
-        (prog) => {
-          setProgress(prog);
-        }
-      );
+      // 1. Client-side full extraction (text, table columns, embedded photos via Canvas)
+      const result = await parsePdfFile(file, (status, pct) => {
+        setParsingStep(status);
+        setParsingProgress(pct);
+      });
 
-      if (!result.success || result.articles.length === 0) {
-        setErrorMessage(
-          result.errors.length > 0 
-            ? result.errors.join(' ') 
-            : "Aucun article n'a pu être identifié dans ce fichier PDF."
-        );
-        setIsProcessing(false);
-        return;
+      // 2. If Gemini API is available and client found few articles, also query server
+      if (result.articles.length === 0) {
+        try {
+          setParsingStep("Analyse approfondie avec le moteur Vision & IA...");
+          const reader = new FileReader();
+          const base64Data = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+
+          const res = await fetch('/api/parse-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdfBase64: base64Data }),
+          });
+          const serverData = await res.json();
+          if (serverData.success && Array.isArray(serverData.articles) && serverData.articles.length > 0) {
+            const serverArticles: ExtractedPdfArticle[] = serverData.articles.map((a: any, idx: number) => ({
+              id: `pdf-srv-${Date.now()}-${idx}`,
+              ref: a.ref || `CM-${String(idx + 1).padStart(4, '0')}`,
+              name: a.name || "Article d'Antiquité",
+              category: a.category || 'Antiquités & Brocante',
+              material: a.material || '',
+              periodOrStyle: '',
+              condition: 'Bel état de conservation',
+              dimensions: a.dimensions || '',
+              quantity: a.quantity || '1 unit.',
+              price: a.price || '',
+              location: a.location || 'Dépôt Zerktouni',
+              notes: a.notes || '',
+              imageUrl: FALLBACK_ANTIQUE_IMAGE,
+              hasExtractedPhoto: false,
+              pageNumber: 1,
+            }));
+            result.articles = serverArticles;
+            result.totalArticles = serverArticles.length;
+          }
+        } catch (serverErr) {
+          console.warn('Fallback server PDF analysis note:', serverErr);
+        }
       }
 
+      setParseResult(result);
       setExtractedArticles(result.articles);
-      setPhotosCount(result.photosCount);
-      setIsProcessing(false);
-    } catch (err: any) {
-      console.error("Erreur parsing PDF:", err);
-      setErrorMessage(err?.message || "Une erreur inattendue est survenue lors de l'extraction.");
-      setIsProcessing(false);
-    }
-  };
+      setSelectedIndices(new Set(result.articles.map((_, i) => i)));
 
-  const handleConfirmImport = async () => {
-    if (extractedArticles.length === 0) return;
-
-    try {
-      setIsProcessing(true);
-
-      // Inject into storage non-destructively
-      const { mergedArticles, addedCount } = await injectPdfArticlesIntoStorage(
-        extractedArticles,
-        currentArticles,
-        {
-          replaceFolder: replaceMode,
-          targetFolder: targetFolder,
-        }
-      );
-
-      // Play alert-notification.mp3 sound as requested
-      try {
+      if (result.articles.length === 0) {
+        setErrorMsg("Aucun article n'a pu être extrait de ce fichier PDF. Vérifiez qu'il s'agit bien d'un document d'inventaire ou catalogue.");
         playAlertNotificationSound();
-      } catch (err) {
-        console.warn("Son non joué:", err);
+      } else {
+        playSuccessSound();
       }
-
-      const summaryText = `${addedCount} article${addedCount > 1 ? 's' : ''} et ${photosCount} photo${photosCount > 1 ? 's' : ''} importés avec succès dans « ${targetFolder} »`;
-      setSuccessSummary(summaryText);
-
-      // Notify parent component to update inventory immediately
-      onArticlesImported(mergedArticles, summaryText);
-
-      // Close modal after brief feedback
-      setTimeout(() => {
-        handleClose();
-      }, 1500);
     } catch (err: any) {
-      setErrorMessage("Erreur lors de l'enregistrement dans la base de données : " + (err?.message || err));
-      setIsProcessing(false);
+      console.error('Erreur importation PDF:', err);
+      setErrorMsg(err?.message || "Une erreur est survenue lors de l'extraction des données du PDF.");
+      playAlertNotificationSound();
+    } finally {
+      setIsParsing(false);
     }
   };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileSelected(file);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIndices.size === extractedArticles.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(extractedArticles.map((_, i) => i)));
+    }
+  };
+
+  const toggleSelectIndex = (index: number) => {
+    const next = new Set(selectedIndices);
+    if (next.has(index)) {
+      next.delete(index);
+    } else {
+      next.add(index);
+    }
+    setSelectedIndices(next);
+  };
+
+  const updateArticle = (index: number, updates: Partial<ExtractedPdfArticle>) => {
+    setExtractedArticles(prev =>
+      prev.map((art, i) => (i === index ? { ...art, ...updates } : art))
+    );
+  };
+
+  const removeArticle = (index: number) => {
+    setExtractedArticles(prev => prev.filter((_, i) => i !== index));
+    setSelectedIndices(prev => {
+      const next = new Set<number>();
+      prev.forEach(i => {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      });
+      return next;
+    });
+  };
+
+  const handleConfirmImport = () => {
+    const target = showCustomFolder && customFolder.trim() ? customFolder.trim() : destinationFolder;
+    const articlesToImport = extractedArticles
+      .filter((_, idx) => selectedIndices.has(idx))
+      .map((item, idx) => {
+        const article: ArticleItem = {
+          id: item.id || `pdf-import-${Date.now()}-${idx}`,
+          ref: item.ref || `CM-${String(idx + 1).padStart(4, '0')}`,
+          name: item.name || "Article d'Antiquité",
+          imageUrl: item.imageUrl || FALLBACK_ANTIQUE_IMAGE,
+          imageFit: 'contain',
+          folder: target || 'CASAMADRE DEPOT',
+          category: item.category || 'Antiquités & Brocante',
+          material: item.material || '',
+          periodOrStyle: item.periodOrStyle || '',
+          condition: item.condition || 'Bel état de conservation',
+          dimensions: item.dimensions || '',
+          quantity: item.quantity || '1 unit.',
+          price: item.price || '',
+          location: item.location || 'Dépôt Zerktouni',
+          notes: item.notes || '',
+        };
+        return article;
+      });
+
+    if (articlesToImport.length === 0) return;
+
+    if (onImportArticles) {
+      onImportArticles(articlesToImport, target);
+    } else if (onArticlesImported) {
+      const merged = [...(currentArticles || []), ...articlesToImport];
+      const photosCount = articlesToImport.filter(
+        a => a.imageUrl && !a.imageUrl.includes('Illustration en cours')
+      ).length;
+      playAlertNotificationSound();
+      onArticlesImported(
+        merged,
+        `${articlesToImport.length} articles et ${photosCount} photos importés avec succès (CASAMADRE DEPOT)`
+      );
+    }
+    onClose();
+  };
+
+  const filteredArticles = extractedArticles.filter(art => {
+    if (!searchFilter.trim()) return true;
+    const query = searchFilter.toLowerCase();
+    return (
+      (art.name && art.name.toLowerCase().includes(query)) ||
+      (art.ref && art.ref.toLowerCase().includes(query)) ||
+      (art.category && art.category.toLowerCase().includes(query)) ||
+      (art.material && art.material.toLowerCase().includes(query)) ||
+      (art.location && art.location.toLowerCase().includes(query))
+    );
+  });
+
+  const photosExtractedCount = extractedArticles.filter(a => a.hasExtractedPhoto).length;
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs no-print select-none">
       <div 
-        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-[#FAF9F5] dark:bg-[#1C1815] text-[#1E1915] dark:text-[#F5F2ED] rounded-2xl shadow-2xl border border-[#E2DBD0] dark:border-[#383028] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#1e1712] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh] border border-[#e2d9ce] dark:border-[#3d2f24] transition-colors"
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DBD0] dark:border-[#383028] bg-white dark:bg-[#221C18]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#8C6239]/10 text-[#8C6239] flex items-center justify-center shadow-sm">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold font-serif tracking-wide">
-                Importation de Données PDF (CASAMADRE DEPOT)
-              </h2>
-              <p className="text-xs text-[#635950] dark:text-[#A89E94]">
-                Extraction intégrale des articles, photos, colonnes et métadonnées
-              </p>
+        <div className="px-6 py-4 border-b border-[#e2d9ce] dark:border-[#382b21] flex justify-between items-center bg-[#faf7f2] dark:bg-[#261d17]">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#8c6239] text-[#faf6f0] flex items-center justify-center shadow-xs">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-cinzel text-base font-bold text-[#5c3e21] dark:text-[#f3dfcc] flex items-center gap-2">
+                  <span>Importation & Extraction PDF</span>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#8c6239]/15 text-[#8c6239] dark:text-[#e89a43] border border-[#8c6239]/30 font-semibold">
+                    CASAMADRE DEPOT
+                  </span>
+                </h2>
+                <p className="text-xs text-[#6e6259] dark:text-[#a8988a]">
+                  Extraction automatique du tableau, colonnes et photos sans omission • Mode ajout / fusion sécurisé
+                </p>
+              </div>
             </div>
           </div>
           <button
-            onClick={handleClose}
-            disabled={isProcessing}
-            className="p-2 text-[#635950] dark:text-[#A89E94] hover:text-[#1E1915] dark:hover:text-white rounded-lg hover:bg-[#F3EDE4] dark:hover:bg-[#2E2620] transition-colors disabled:opacity-50 cursor-pointer"
+            onClick={onClose}
+            className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-[#33251b] transition-colors cursor-pointer"
             title="Fermer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Success summary toast banner */}
-          {successSummary && (
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
-                <p className="font-semibold text-sm">{successSummary}</p>
-                <p className="text-xs opacity-90">Base de données synchronisée et son de notification de succès déclenché.</p>
-              </div>
+        {/* Modal Body */}
+        <div className="p-5 overflow-y-auto space-y-4 flex-1 flex flex-col bg-[#fdfbf7] dark:bg-[#1b140f]">
+          {/* Error Banner */}
+          {errorMsg && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-lg text-red-800 dark:text-red-300 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <span className="flex-1 font-medium">{errorMsg}</span>
             </div>
           )}
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
-              <div className="text-sm font-medium">{errorMessage}</div>
-            </div>
-          )}
-
-          {/* Configuration Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white dark:bg-[#221C18] border border-[#E2DBD0] dark:border-[#383028]">
-            {/* Target Folder Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-[#635950] dark:text-[#A89E94] uppercase tracking-wider mb-1.5">
-                Dossier de destination :
-              </label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={targetFolder}
-                  onChange={(e) => setTargetFolder(e.target.value)}
-                  disabled={isProcessing}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2DBD0] dark:border-[#383028] bg-[#FAFAF8] dark:bg-[#1A1614] text-[#1E1915] dark:text-[#F5F2ED] focus:ring-2 focus:ring-[#8C6239] outline-none cursor-pointer"
-                >
-                  {availableFolders.map((f) => (
-                    <option key={f} value={f}>
-                      📂 {f}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Merge Mode Toggle */}
-            <div>
-              <label className="block text-xs font-semibold text-[#635950] dark:text-[#A89E94] uppercase tracking-wider mb-1.5">
-                Mode d'injection dans la base :
-              </label>
-              <div className="flex items-center gap-4 mt-2">
-                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    checked={!replaceMode}
-                    onChange={() => setReplaceMode(false)}
-                    disabled={isProcessing}
-                    className="accent-[#8C6239] cursor-pointer"
-                  />
-                  <span>Ajouter / Fusionner (Non-destructif)</span>
-                </label>
-                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    checked={replaceMode}
-                    onChange={() => setReplaceMode(true)}
-                    disabled={isProcessing}
-                    className="accent-[#8C6239] cursor-pointer"
-                  />
-                  <span>Remplacer le dossier</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Drag & Drop Upload Zone */}
+          {/* Initial Dropzone if no file selected yet */}
           {!selectedFile && (
             <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                  handleFileSelect(e.dataTransfer.files[0]);
-                }
-              }}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#D4C7B5] dark:border-[#4A3D33] hover:border-[#8C6239] rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 bg-white/60 dark:bg-[#201A16]/50 hover:bg-[#F3EDE4]/50 dark:hover:bg-[#2A221C]/50 group"
+              className="border-2 border-dashed border-[#c4a482] dark:border-[#7c634c] rounded-xl p-8 sm:p-12 text-center bg-white dark:bg-[#251c16] hover:bg-[#faf6f0] dark:hover:bg-[#2e231b] cursor-pointer transition-all flex flex-col items-center justify-center space-y-3 shadow-xs group"
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,application/pdf"
+                onChange={handleFileChange}
                 className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleFileSelect(e.target.files[0]);
-                  }
-                }}
               />
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#8C6239]/10 text-[#8C6239] flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                <Upload className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-2xl bg-[#f5ede2] dark:bg-[#382a20] flex items-center justify-center text-[#8c6239] dark:text-[#d4a373] group-hover:scale-105 transition-transform border border-[#e8dfd5] dark:border-[#4d3b2d]">
+                <FileText className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-bold font-serif text-[#1E1915] dark:text-white mb-1">
-                Glissez-déposez votre catalogue PDF ici
-              </h3>
-              <p className="text-xs text-[#635950] dark:text-[#A89E94] max-w-md mx-auto mb-3">
-                Prend en charge les catalogues A4 CASAMADRE DEPOT (2 articles par page) et les tableaux d'inventaires à colonnes multiples.
-              </p>
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8C6239] text-white text-xs font-semibold shadow hover:bg-[#734F2C] transition-colors">
-                <FileText className="w-4 h-4" />
-                Sélectionner un fichier PDF
+              <div className="space-y-1">
+                <p className="font-semibold text-stone-800 dark:text-[#f0dfcc] text-sm sm:text-base">
+                  Glissez-déposez votre fichier PDF d'inventaire ici
+                </p>
+                <p className="text-xs text-[#6e6259] dark:text-[#a8988a]">
+                  ou cliquez pour sélectionner un fichier PDF depuis votre appareil (ex: inventaire CASAMADRE DEPOT)
+                </p>
+              </div>
+              <div className="pt-2">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#8c6239] hover:bg-[#734f2d] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Sélectionner le fichier PDF</span>
+                </span>
+              </div>
+              <div className="pt-2 text-[11px] text-stone-500 dark:text-stone-400 flex items-center gap-4 flex-wrap justify-center">
+                <span>✓ Reconnaissance automatique des colonnes</span>
+                <span>✓ Extraction directe des photos associées</span>
+                <span>✓ Respect strict des données existantes</span>
+              </div>
+            </div>
+          )}
+
+          {/* Loading / Parsing Progress State */}
+          {isParsing && (
+            <div className="bg-white dark:bg-[#251c16] border border-[#e2d9ce] dark:border-[#382b21] rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-4 my-auto shadow-sm">
+              <div className="relative">
+                <Loader2 className="w-12 h-12 text-[#8c6239] animate-spin" />
+                <Sparkles className="w-4 h-4 text-amber-500 absolute -top-1 -right-1 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-cinzel text-sm sm:text-base font-bold text-[#5c3e21] dark:text-[#f3dfcc]">
+                  Analyse et Extraction en cours...
+                </h3>
+                <p className="text-xs text-stone-600 dark:text-[#c4b5a5]">
+                  {parsingStep || 'Lecture du document PDF et extraction des données...'}
+                </p>
+              </div>
+              <div className="w-full max-w-md bg-stone-100 dark:bg-[#1a1410] rounded-full h-2 overflow-hidden border border-stone-200 dark:border-[#423429]">
+                <div 
+                  className="bg-gradient-to-r from-[#8c6239] to-[#d4a373] h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${parsingProgress}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-mono font-semibold text-stone-500">
+                {parsingProgress}%
               </span>
             </div>
           )}
 
-          {/* Processing / Progress State */}
-          {isProcessing && progress && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-[#221C18] border border-[#E2DBD0] dark:border-[#383028] space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="w-5 h-5 text-[#8C6239] animate-spin" />
-                  <span className="text-sm font-semibold text-[#1E1915] dark:text-white">
-                    {progress.statusMessage}
+          {/* Extracted Articles Preview Table */}
+          {!isParsing && parseResult && extractedArticles.length > 0 && (
+            <div className="space-y-3 flex-1 flex flex-col min-h-0">
+              {/* Top Control Bar: Destination folder, Search, and Stats */}
+              <div className="bg-white dark:bg-[#251c16] border border-[#e2d9ce] dark:border-[#3d2f24] rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+                {/* Stats */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800/60 font-semibold text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{extractedArticles.length} articles extraits</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800/60 font-semibold text-xs">
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{photosExtractedCount} photos identifiées</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setParseResult(null);
+                      setExtractedArticles([]);
+                    }}
+                    className="text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 underline cursor-pointer"
+                  >
+                    Changer de fichier
+                  </button>
+                </div>
+
+                {/* Target Folder Selection */}
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-stone-700 dark:text-[#dfd4c7] text-xs">
+                    📂 Dossier cible :
+                  </span>
+                  {!showCustomFolder ? (
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={destinationFolder}
+                        onChange={e => {
+                          if (e.target.value === '__new__') {
+                            setShowCustomFolder(true);
+                          } else {
+                            setDestinationFolder(e.target.value);
+                          }
+                        }}
+                        className="bg-stone-50 dark:bg-[#1f1813] text-stone-800 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded px-2.5 py-1 text-xs font-semibold focus:outline-none focus:border-[#8c6239] cursor-pointer"
+                      >
+                        {Array.from(new Set([...availableFolders, 'CASAMADRE DEPOT'])).map(f => (
+                          <option key={f} value={f}>
+                            {f}
+                          </option>
+                        ))}
+                        <option value="__new__">+ Nouveau dossier...</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={customFolder}
+                        onChange={e => setCustomFolder(e.target.value)}
+                        placeholder="Nom du nouveau dossier"
+                        className="bg-white dark:bg-[#1f1813] text-stone-800 dark:text-[#faf6f0] border border-[#8c6239] rounded px-2 py-1 text-xs focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (customFolder.trim()) {
+                            setDestinationFolder(customFolder.trim());
+                          }
+                          setShowCustomFolder(false);
+                        }}
+                        className="px-2 py-1 bg-[#8c6239] text-white rounded text-xs"
+                      >
+                        OK
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Table Filter & Select All */}
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="px-2.5 py-1 bg-white dark:bg-[#251c16] hover:bg-stone-50 dark:hover:bg-[#2f231c] border border-stone-300 dark:border-[#4a392c] rounded text-[11px] font-medium text-stone-700 dark:text-[#dfd4c7] cursor-pointer"
+                  >
+                    {selectedIndices.size === extractedArticles.length
+                      ? 'Tout désélectionner'
+                      : `Tout sélectionner (${extractedArticles.length})`}
+                  </button>
+                  <span className="text-[11px] text-stone-500">
+                    {selectedIndices.size} article(s) sélectionné(s) pour l'import
                   </span>
                 </div>
-                <span className="text-xs font-bold text-[#8C6239]">
-                  {progress.percent}%
-                </span>
-              </div>
 
-              {/* Progress bar */}
-              <div className="w-full h-2.5 rounded-full bg-[#E2DBD0] dark:bg-[#383028] overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#8C6239] to-[#D4A373] transition-all duration-300 rounded-full"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-[#635950] dark:text-[#A89E94] pt-1">
-                <span>Page {progress.currentPage} sur {progress.totalPages || '...'}</span>
-                <span>{progress.itemsFound} articles détectés • {progress.photosFound} photos extraites</span>
-              </div>
-            </div>
-          )}
-
-          {/* Extracted Articles Preview List */}
-          {extractedArticles.length > 0 && !isProcessing && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-serif font-bold text-sm text-[#1E1915] dark:text-white">
-                    Aperçu des articles extraits ({extractedArticles.length} articles, {photosCount} photos)
-                  </h3>
+                <div className="relative max-w-xs w-full">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-stone-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={e => setSearchFilter(e.target.value)}
+                    placeholder="Filtrer les articles extraits..."
+                    className="w-full pl-8 pr-3 py-1 bg-white dark:bg-[#251c16] border border-stone-300 dark:border-[#423327] rounded text-xs text-stone-800 dark:text-[#faf6f0] focus:outline-none focus:border-[#8c6239]"
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClickSound();
-                    setSelectedFile(null);
-                    setExtractedArticles([]);
-                  }}
-                  className="text-xs text-[#8C6239] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Changer de fichier
-                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto pr-1">
-                {extractedArticles.map((art, idx) => (
-                  <div
-                    key={art.id || idx}
-                    className="flex gap-3 p-3 rounded-xl bg-white dark:bg-[#221C18] border border-[#E2DBD0] dark:border-[#383028] hover:border-[#8C6239]/50 transition-colors shadow-sm"
-                  >
-                    {/* Thumbnail with standard Base64 conversion and fallback */}
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-[#E2DBD0]/40 dark:bg-[#2E2620] shrink-0 border border-[#E2DBD0] dark:border-[#383028] flex items-center justify-center relative">
-                      <img
-                        src={art.imageUrl || FALLBACK_ANTIQUE_IMAGE}
-                        alt={art.name}
-                        className="w-full h-full object-contain p-0.5"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = FALLBACK_ANTIQUE_IMAGE;
-                        }}
-                      />
-                      <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/75 text-white">
-                        #{idx + 1}
-                      </span>
-                    </div>
+              {/* Responsive Formatted Table */}
+              <div className="flex-1 overflow-x-auto overflow-y-auto border border-[#e2d9ce] dark:border-[#382b21] rounded-lg bg-white dark:bg-[#201813] shadow-inner max-h-96">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#f5ede2] dark:bg-[#2a2019] text-[#5c3e21] dark:text-[#f0dfcc] uppercase font-semibold text-[10px] tracking-wider sticky top-0 z-10 border-b border-[#e2d9ce] dark:border-[#382b21]">
+                    <tr>
+                      <th className="py-2.5 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIndices.size === extractedArticles.length && extractedArticles.length > 0}
+                          onChange={toggleSelectAll}
+                          className="rounded text-[#8c6239] cursor-pointer"
+                        />
+                      </th>
+                      <th className="py-2.5 px-3 w-16">Photo</th>
+                      <th className="py-2.5 px-3 w-28">Référence</th>
+                      <th className="py-2.5 px-3 min-w-[200px]">Désignation</th>
+                      <th className="py-2.5 px-3 w-32">Catégorie</th>
+                      <th className="py-2.5 px-3 w-32">Matière</th>
+                      <th className="py-2.5 px-3 w-36">Emplacement</th>
+                      <th className="py-2.5 px-3 w-20 text-center">Quantité</th>
+                      <th className="py-2.5 px-3 w-24 text-right">Prix</th>
+                      <th className="py-2.5 px-3 w-10 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-200 dark:divide-[#33261d]">
+                    {filteredArticles.map((article, idx) => {
+                      const isSelected = selectedIndices.has(idx);
+                      return (
+                        <tr 
+                          key={article.id}
+                          className={`hover:bg-[#faf6f0] dark:hover:bg-[#281e18] transition-colors ${
+                            !isSelected ? 'opacity-50 bg-stone-50/50 dark:bg-stone-900/30' : ''
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <td className="py-2 px-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectIndex(idx)}
+                              className="rounded text-[#8c6239] cursor-pointer"
+                            />
+                          </td>
 
-                    {/* Details */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-[10px] font-mono font-bold text-[#8C6239] truncate">
-                            {art.ref}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#F3EDE4] dark:bg-[#2E2620] text-[#8C6239]">
-                            Qté: {art.quantity}
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-semibold text-[#1E1915] dark:text-white line-clamp-2 leading-tight">
-                          {art.name}
-                        </h4>
-                      </div>
+                          {/* Photo Thumbnail */}
+                          <td className="py-2 px-3">
+                            <div className="w-12 h-12 rounded border border-stone-300 dark:border-[#4d3b2d] bg-stone-100 dark:bg-[#1a1410] flex items-center justify-center overflow-hidden relative shadow-2xs group">
+                              <img
+                                src={article.imageUrl || FALLBACK_ANTIQUE_IMAGE}
+                                alt={article.name}
+                                className="max-w-full max-h-full object-contain"
+                              />
+                              {article.hasExtractedPhoto ? (
+                                <span className="absolute bottom-0 right-0 bg-emerald-600 text-white text-[8px] font-bold px-1 rounded-tl" title="Photo originale extraite du PDF">
+                                  PDF
+                                </span>
+                              ) : (
+                                <span className="absolute bottom-0 right-0 bg-[#8c6239] text-white text-[8px] font-bold px-1 rounded-tl" title="Illustration standard">
+                                  CM
+                                </span>
+                              )}
+                            </div>
+                          </td>
 
-                      <div className="flex items-center justify-between text-[10px] text-[#635950] dark:text-[#A89E94] pt-1">
-                        <span className="truncate">{art.category}</span>
-                        <span className="truncate">{art.material || art.periodOrStyle}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                          {/* Référence */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={article.ref}
+                              onChange={e => updateArticle(idx, { ref: e.target.value })}
+                              className="w-full font-mono text-[11px] font-bold text-[#8c6239] dark:text-[#d4a373] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                          </td>
+
+                          {/* Désignation */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={article.name}
+                              onChange={e => updateArticle(idx, { name: e.target.value })}
+                              className="w-full font-semibold text-xs text-stone-800 dark:text-[#faf6f0] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                            {article.notes && (
+                              <p className="text-[10px] text-stone-400 truncate px-1 mt-0.5">
+                                {article.notes}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Catégorie */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={article.category}
+                              onChange={e => updateArticle(idx, { category: e.target.value })}
+                              className="w-full text-xs text-stone-700 dark:text-[#dfd4c7] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                          </td>
+
+                          {/* Matière */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={article.material}
+                              onChange={e => updateArticle(idx, { material: e.target.value })}
+                              placeholder="Matière..."
+                              className="w-full text-xs text-stone-700 dark:text-[#dfd4c7] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                          </td>
+
+                          {/* Emplacement */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={article.location}
+                              onChange={e => updateArticle(idx, { location: e.target.value })}
+                              placeholder="Dépôt Zerktouni..."
+                              className="w-full text-xs text-stone-700 dark:text-[#dfd4c7] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1 font-medium"
+                            />
+                          </td>
+
+                          {/* Quantité */}
+                          <td className="py-2 px-3 text-center">
+                            <input
+                              type="text"
+                              value={article.quantity}
+                              onChange={e => updateArticle(idx, { quantity: e.target.value })}
+                              className="w-16 text-center font-bold text-xs text-stone-800 dark:text-[#faf6f0] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                          </td>
+
+                          {/* Prix */}
+                          <td className="py-2 px-3 text-right">
+                            <input
+                              type="text"
+                              value={article.price}
+                              onChange={e => updateArticle(idx, { price: e.target.value })}
+                              placeholder="Prix..."
+                              className="w-20 text-right font-bold text-xs text-[#5c3e21] dark:text-[#f3dfcc] bg-transparent border-b border-transparent hover:border-stone-300 focus:border-[#8c6239] focus:outline-none px-1"
+                            />
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-2 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeArticle(idx)}
+                              className="text-stone-400 hover:text-red-600 dark:hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
+                              title="Retirer cette ligne"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#E2DBD0] dark:border-[#383028] bg-white dark:bg-[#221C18]">
-          <div className="text-xs text-[#635950] dark:text-[#A89E94] flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-[#8C6239]" />
-            <span>Mode sécurisé : fusion et ajout sans écrasement involontaire.</span>
+        <div className="px-6 py-3.5 border-t border-[#e2d9ce] dark:border-[#382b21] bg-[#faf7f2] dark:bg-[#261d17] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-[#6e6259] dark:text-[#a8988a]">
+            {extractedArticles.length > 0 ? (
+              <span>
+                💡 <strong>Mode Ajout / Fusion :</strong> Les {selectedIndices.size} article(s) seront intégrés dans le dossier « {showCustomFolder && customFolder.trim() ? customFolder.trim() : destinationFolder} » sans toucher aux articles déjà enregistrés.
+              </span>
+            ) : (
+              <span>Sélectionnez un fichier PDF d'inventaire pour démarrer l'extraction.</span>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleClose}
-              disabled={isProcessing}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#635950] dark:text-[#A89E94] hover:bg-[#F3EDE4] dark:hover:bg-[#2E2620] transition-colors disabled:opacity-50 cursor-pointer"
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium text-stone-600 dark:text-[#dfd4c7] hover:bg-stone-100 dark:hover:bg-[#2e231b] rounded-lg border border-stone-200 dark:border-[#4d3b2d] transition-colors cursor-pointer"
             >
               Annuler
             </button>
-
-            {extractedArticles.length > 0 && (
-              <button
-                onClick={handleConfirmImport}
-                disabled={isProcessing}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#8C6239] hover:bg-[#734F2C] text-white shadow-md flex items-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Valider & Importer ({extractedArticles.length} articles)
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={selectedIndices.size === 0 || isParsing}
+              onClick={handleConfirmImport}
+              className="px-5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-[#8c6239] to-[#754f2c] hover:from-[#7c5631] hover:to-[#684424] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
+            >
+              <Check className="w-4 h-4" />
+              <span>
+                Injecter {selectedIndices.size} article(s) dans l'inventaire
+              </span>
+            </button>
           </div>
         </div>
       </div>

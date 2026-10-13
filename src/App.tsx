@@ -905,6 +905,46 @@ export default function App() {
     showToast(`${newArticles.length} article(s) enregistré(s) dans le dossier « ${targetFolder} »`);
   };
 
+  // Import articles directly from parsed PDF (CASAMADRE DEPOT) without overwriting existing data (mode ajout / fusion)
+  const handleImportPdfArticles = (importedArticles: ArticleItem[], targetFolder: string) => {
+    if (!folders.some(f => f.toLowerCase() === targetFolder.toLowerCase())) {
+      const updatedFolders = [...folders, targetFolder];
+      setConfig(prev => ({
+        ...prev,
+        folders: updatedFolders,
+        activeFolder: targetFolder,
+        collection: targetFolder,
+      }));
+    } else {
+      setConfig(prev => ({
+        ...prev,
+        activeFolder: targetFolder,
+        collection: targetFolder === 'all' ? (prev.collection || 'CASAMADRE DEPOT') : targetFolder,
+      }));
+    }
+
+    // Merge and append to existing inventory (mode ajout / fusion)
+    setArticles(prev => [...prev, ...importedArticles]);
+
+    // Synchronize to Firestore for authenticated users
+    if (currentUser?.uid && !isFirestoreQuotaExceeded()) {
+      importedArticles.forEach(art => {
+        syncArticleToFirestore(currentUser.uid, art).catch(console.warn);
+      });
+    }
+
+    // Play notification alert sound (alert-notification.mp3)
+    playAlertNotificationSound();
+
+    const photosCount = importedArticles.filter(
+      a => a.imageUrl && !a.imageUrl.includes('Illustration en cours')
+    ).length;
+
+    showToast(
+      `${importedArticles.length} articles et ${photosCount} photos importés avec succès (CASAMADRE DEPOT)`
+    );
+  };
+
   // Add single scanned / captured article
   const handleAddSingleArticle = (newArticle: ArticleItem) => {
     setArticles(prev => [newArticle, ...prev]);
@@ -1238,6 +1278,7 @@ export default function App() {
               onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
               onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
               onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+              onOpenPdfImport={() => executeWithPinProtection(() => setIsPdfImportOpen(true), "Importer un catalogue PDF")}
               onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
               onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
               onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
@@ -1287,6 +1328,7 @@ export default function App() {
               onDuplicateArticle={(article) => executeWithPinProtection(() => handleDuplicateArticle(article), "Dupliquer l'article")}
               onDeleteArticle={(id) => executeWithPinProtection(() => handleDeleteArticle(id), "Supprimer l'article")}
               onOpenBatchUpload={() => executeWithPinProtection(() => setIsBatchUploadOpen(true), "Importer des photos")}
+              onOpenPdfImport={() => executeWithPinProtection(() => setIsPdfImportOpen(true), "Importer un catalogue PDF")}
               onAddNewManual={() => executeWithPinProtection(handleAddNewManual, "Ajout d'un nouvel article")}
               onResetToDefault={() => executeWithPinProtection(handleResetToDefault, "Réinitialisation")}
               onRepairLibrary={() => executeWithPinProtection(handleRepairLibrary, "Réparation de la bibliothèque")}
@@ -1394,6 +1436,7 @@ export default function App() {
         onClose={() => setIsScannerOpen(false)}
         activeFolder={activeFolder}
         onAddArticle={handleAddSingleArticle}
+        onOpenPdfImport={() => executeWithPinProtection(() => setIsPdfImportOpen(true), "Importer un catalogue PDF")}
       />
 
       {/* Global Window Drag & Drop Overlay */}
@@ -1408,10 +1451,10 @@ export default function App() {
             CASA MADRE — Dépôt Zerktouni
           </h2>
           <p className="font-garamond italic text-lg text-[#d9cebe] mt-1">
-            Déposez vos photos pour l'import dans le dossier « {activeFolder === 'all' ? 'Halloween' : activeFolder} »
+            Déposez votre document PDF ou vos photos pour l'import dans « {activeFolder === 'all' ? 'CASAMADRE DEPOT' : activeFolder} »
           </p>
           <p className="text-xs text-[#c4b5a5] mt-3">
-            Photos originales intactes, sans recadrage ni altération.
+            Formats acceptés : PDF d'inventaire (CASAMADRE DEPOT), JPG, PNG, WEBP.
           </p>
         </div>
       )}
@@ -1434,15 +1477,9 @@ export default function App() {
           setInitialFileForPdfImport(null);
         }}
         initialFile={initialFileForPdfImport}
-        onArticlesImported={(importedArticles, message) => {
-          setArticles(importedArticles);
-          showToast(message);
-          if (currentUser) {
-            syncAllArticlesToFirestore(currentUser.uid, importedArticles).catch(err => console.error('Cloud sync error:', err));
-          }
-        }}
+        onImportArticles={handleImportPdfArticles}
         currentArticles={articles}
-        activeFolder={activeFolder === 'all' ? 'Antiquités' : activeFolder}
+        activeFolder={activeFolder === 'all' ? 'CASAMADRE DEPOT' : activeFolder}
         availableFolders={folders}
       />
 

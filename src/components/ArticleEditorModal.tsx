@@ -481,8 +481,8 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
             </div>
           </div>
 
-          {/* Prix & Description / Remarques */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Prix, Emplacement & Description / Remarques */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
                 Prix / Estimation (optionnel) :
@@ -495,21 +495,34 @@ export const ArticleEditorModal: React.FC<ArticleEditorModalProps> = ({
                 className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239]"
               />
             </div>
-            <div className="md:col-span-2">
-              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
-                <span>Description & Remarques (notice catalogue) :</span>
-                <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
-                  <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
-                </span>
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1">
+                Emplacement / Dépôt :
               </label>
-              <textarea
-                rows={2}
-                value={formData.notes || ''}
-                onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Ex: Ouvrant par 3 tiroirs, serrures d'origine en bronze ciselé..."
-                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] leading-relaxed resize-y"
+              <input
+                type="text"
+                value={formData.location || ''}
+                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Ex: Dépôt Zerktouni - Rayon A2"
+                className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] font-medium"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-stone-700 dark:text-[#dfd4c7] mb-1 flex items-center justify-between">
+              <span>Description & Remarques (notice catalogue) :</span>
+              <span className="text-[10px] text-[#8c6239] dark:text-[#d4a373] font-normal flex items-center gap-0.5">
+                <Sparkles className="w-3 h-3 text-[#8c6239] dark:text-[#d4a373]" /> Auto IA
+              </span>
+            </label>
+            <textarea
+              rows={2}
+              value={formData.notes || ''}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Ex: Ouvrant par 3 tiroirs, serrures d'origine en bronze ciselé..."
+              className="w-full px-3 py-1.5 bg-white dark:bg-[#291f18] text-stone-900 dark:text-[#faf6f0] border border-stone-300 dark:border-[#4d3b2d] rounded focus:outline-none focus:ring-1 focus:ring-[#8c6239] leading-relaxed resize-y"
+            />
           </div>
 
           {/* Footer Actions */}

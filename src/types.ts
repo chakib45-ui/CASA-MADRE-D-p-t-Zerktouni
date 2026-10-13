@@ -12,6 +12,7 @@ export interface ArticleItem {
   dimensions?: string;
   quantity: string; // e.g. "1 unit.", "Lot de 4", "Paire (2 unit.)"
   price?: string; // e.g. "450 €"
+  location?: string; // e.g. "Dépôt Zerktouni - Rayon A2" (Emplacement)
   notes?: string;
 }
 

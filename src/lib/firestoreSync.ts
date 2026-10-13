@@ -107,6 +107,7 @@ export async function syncArticleToFirestore(userId: string, article: ArticleIte
       dimensions: article.dimensions || '',
       quantity: article.quantity || '1 unit.',
       price: article.price || '',
+      location: article.location || '',
       notes: article.notes || '',
       userId,
       updatedAt: new Date().toISOString()

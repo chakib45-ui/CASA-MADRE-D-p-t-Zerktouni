@@ -32,6 +32,7 @@
         "dimensions": { "type": "string" },
         "quantity": { "type": "string" },
         "price": { "type": "string" },
+        "location": { "type": "string" },
         "notes": { "type": "string" },
         "userId": { "type": "string" },
         "updatedAt": { "type": "string" }

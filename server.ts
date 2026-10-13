@@ -429,6 +429,98 @@ app.post('/api/analyze-vision', async (req, res) => {
   }
 });
 
+// PDF Parsing & Extraction endpoint using Gemini AI multimodal for complex layouts
+app.post('/api/parse-pdf', async (req, res) => {
+  try {
+    const { pdfBase64 } = req.body;
+    if (!pdfBase64) {
+      return res.status(400).json({ success: false, error: 'Données PDF base64 manquantes' });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        success: false,
+        error: 'GEMINI_API_KEY non configurée',
+        articles: [],
+      });
+    }
+
+    const cleanBase64 = pdfBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
+    const ai = getAi();
+
+    const prompt =
+      "Tu es un expert en gestion de stocks, inventaires d'antiquités et catalogage d'art pour la maison CASA MADRE - Dépôt Zerktouni.\n" +
+      "Analyse ce document PDF d'inventaire complet.\n" +
+      "Extrais avec une précision chirurgicale la liste exhaustive de TOUS les articles et lignes d'inventaire présents dans le document sans aucune omission.\n\n" +
+      "Pour chaque article, extrait et structure rigoureusement les champs suivants :\n" +
+      "- ref : référence ou code article (ex: CM-0012, CM-104, REF-42). Si non précisé, attribue un code de la forme CM-XXXX.\n" +
+      "- name : désignation complète et soignée de l'article (ex: Commode galbée en noyer Louis XV, Miroir doré feuille d'or, etc.). Assemble les retours à la ligne si la désignation s'étend sur plusieurs lignes.\n" +
+      "- category : catégorie (ex: Mobilier d'époque, Miroiterie, Luminaires, Brocante, Porcelaine & Faïence, etc.).\n" +
+      "- material : matière(s) principale(s) (ex: Noyer massif, Bronze doré, Marbre blanc de Carrare, Chêne, etc.).\n" +
+      "- location : emplacement ou lieu de stockage (ex: Dépôt Zerktouni, Rayon A1, Hangar 2, etc.).\n" +
+      "- quantity : quantité en stock (ex: 1 unit., 2 unit., Lot de 4, etc.).\n" +
+      "- price : prix ou valeur unitaire (ex: 1 200 €, 450 DH, etc.).\n" +
+      "- dimensions : dimensions si mentionnées.\n" +
+      "- notes : remarques, descriptif ou observations complémentaires.\n\n" +
+      "Veille à ce que chaque champ soit bien nettoyé, sans chevauchement de texte et parfaitement aligné.";
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            mimeType: 'application/pdf',
+            data: cleanBase64,
+          },
+        },
+        prompt,
+      ],
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            documentTitle: { type: Type.STRING },
+            articles: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  ref: { type: Type.STRING },
+                  name: { type: Type.STRING },
+                  category: { type: Type.STRING },
+                  material: { type: Type.STRING },
+                  location: { type: Type.STRING },
+                  quantity: { type: Type.STRING },
+                  price: { type: Type.STRING },
+                  dimensions: { type: Type.STRING },
+                  notes: { type: Type.STRING },
+                },
+                required: ['name', 'ref'],
+              },
+            },
+          },
+          required: ['articles'],
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json({
+      success: true,
+      documentTitle: parsed.documentTitle || 'Inventaire CASAMADRE DEPOT',
+      articles: parsed.articles || [],
+    });
+  } catch (error: any) {
+    console.warn('Erreur API parse-pdf:', error?.message || error);
+    return res.json({
+      success: false,
+      error: error?.message || 'Erreur lors de l\'analyse du PDF par Gemini.',
+      articles: [],
+    });
+  }
+});
+
 async function startServer() {
   // Serve public directory (assets, downloadable zip archive, etc.)
   app.use(express.static(path.join(process.cwd(), 'public')));

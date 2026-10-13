@@ -9,7 +9,8 @@ import {
   Sparkles,
   Layers,
   Zap,
-  ZapOff
+  ZapOff,
+  FileText
 } from 'lucide-react';
 import { ArticleItem } from '../types';
 import { playCameraShutterSound } from '../utils/audioFeedback';
@@ -19,6 +20,7 @@ interface CameraCaptureModalProps {
   onClose: () => void;
   activeFolder: string;
   onAddArticle: (article: ArticleItem) => void;
+  onOpenPdfImport?: () => void;
 }
 
 export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
@@ -26,6 +28,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   onClose,
   activeFolder,
   onAddArticle,
+  onOpenPdfImport,
 }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -252,13 +255,30 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-            title="Fermer le scanner"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenPdfImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenPdfImport();
+                }}
+                className="px-3 py-1.5 text-xs font-semibold bg-[#8c6239]/80 hover:bg-[#8c6239] text-[#faf6f0] rounded-lg border border-[#c4a482]/40 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                title="Importer un fichier PDF d'inventaire"
+              >
+                <FileText className="w-3.5 h-3.5 text-[#e89a43]" />
+                <span className="hidden sm:inline">Importer un PDF (CASAMADRE DEPOT)</span>
+                <span className="sm:hidden">Import PDF</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              title="Fermer le scanner"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -272,14 +292,29 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 <h3 className="font-semibold text-stone-200 text-sm mb-1">Accès à la caméra impossible</h3>
                 <p className="text-xs text-stone-400 leading-relaxed">{error}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => startCamera(facingMode)}
-                className="px-4 py-2 text-xs font-semibold bg-[#8c6239] hover:bg-[#a67443] text-white rounded-lg transition-colors flex items-center gap-2 shadow"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Réessayer</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <button
+                  type="button"
+                  onClick={() => startCamera(facingMode)}
+                  className="px-4 py-2 text-xs font-semibold bg-[#8c6239] hover:bg-[#a67443] text-white rounded-lg transition-colors flex items-center gap-2 shadow"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Réessayer</span>
+                </button>
+                {onOpenPdfImport && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenPdfImport();
+                    }}
+                    className="px-4 py-2 text-xs font-semibold bg-[#2a221d] hover:bg-[#382b22] text-[#f5ebd9] border border-[#8c6239] rounded-lg transition-colors flex items-center gap-2 shadow"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#e89a43]" />
+                    <span>Importer un PDF d'inventaire</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : capturedImage ? (
             /* Review & Add Form */
